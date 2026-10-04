@@ -2,7 +2,13 @@
 # SessionStart hook for the pstack plugin: prints the poteto-mode dispatch
 # mandate to stdout, which Claude Code injects as session context directly.
 # A missing context file fails the hook cleanly instead of injecting noise.
+#
+# Fork patch (see FORK.md): the mandate is injected only while the front-door
+# flag file exists, so one file turns the router on or off for every lane.
 
 set -euo pipefail
+
+flag="${PSTACK_FRONT_DOOR_FLAG:-$HOME/.agents/pstack-front-door.on}"
+[[ -e "$flag" ]] || exit 0
 
 exec cat "$(cd "$(dirname "$0")" && pwd)/session-start-context.md"
