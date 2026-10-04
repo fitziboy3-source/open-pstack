@@ -1,6 +1,7 @@
 ---
 name: no-comments
 description: "Spawn the comment-sicko subagent, fix accepted findings, and offer encodings for claimed constraints."
+disable-model-invocation: true
 ---
 
 # No comments
