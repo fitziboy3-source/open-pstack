@@ -1,6 +1,6 @@
 # Install this kit on your machine
 
-For a teammate who runs Claude Code or Codex. It takes about two minutes. Your sessions work exactly as before until the front door is switched on: the kit installs passive, so a skill runs only when you type its command.
+For a teammate who runs Claude Code or Codex. It takes about two minutes. Since 2026-10-05 the kit installs active: Claude or Codex can start one of its skills when your request matches it, and you can still type any skill's command. The router does not start by itself on your machine: that needs the harness and its flag file, which this page does not install.
 
 ## Claude Code (Mac or Windows)
 

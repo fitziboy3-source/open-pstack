@@ -1,7 +1,6 @@
 ---
 name: setup-pstack
 description: Configure pstack's provider-qualified models, per-family requested effort, and parent-owned routes per role. Verifies the assigned native and external lanes before writing the override sheet. Use for /setup-pstack, "configure pstack models", or changing pstack's model choices.
-disable-model-invocation: true
 ---
 
 # Setup pstack
