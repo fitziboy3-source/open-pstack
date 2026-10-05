@@ -12,7 +12,8 @@
 #   - Always exits 0. A non-zero setup script stops the session from starting,
 #     and a session without the kit is better than no session.
 #   - The last line printed starts with "pstack-cloud-setup:" and says what
-#     happened: "installed <sha> ... at <path>", or "SKIPPED" with the reason.
+#     happened: "installed <sha> ... at <path>", or "SKIPPED" with the reason and
+#     whether an earlier kit is still installed.
 #   - Safe to run again: each run replaces the installed kit with the branch tip.
 #   - Holds no secret. The fork is public; anyone who can use the environment
 #     can read its setup script.
@@ -33,14 +34,22 @@ ref="${PSTACK_KIT_REF:-adam/release}"
 # `cd ~` resolves the home directory from the user database when HOME is unset.
 claude_dir="${PSTACK_CLAUDE_DIR:-${CLAUDE_CONFIG_DIR:-$(cd ~ && pwd)/.claude}}"
 dest="$claude_dir/skills/pstack"
-work=""
+work=""   # the clone; removed on every exit
+stage=""  # the new kit, beside $dest so the final rename stays on one filesystem
 
 finish() {
-  rm -rf "$work" "$dest.new"
+  rm -rf "$work" "$stage"
   echo "pstack-cloud-setup: $1"
   exit 0
 }
-skip() { finish "SKIPPED, $1; this session has no pstack kit"; }
+skip() {
+  local have
+  have="$(sed -n 's/^sha=//p' "$dest/.cloud-kit" 2>/dev/null)"
+  if [ -n "$have" ]; then
+    finish "SKIPPED, $1; kept the kit already installed ($have)"
+  fi
+  finish "SKIPPED, $1; this session has no pstack kit"
+}
 
 work="$(mktemp -d)" || skip "no temporary directory"
 
@@ -54,9 +63,10 @@ src="$work/kit/plugins/pstack"
   || skip "$repo at $ref holds no plugins/pstack plugin"
 
 sha="$(git -C "$work/kit" rev-parse HEAD)"
-mkdir -p "$claude_dir/skills" && rm -rf "$dest.new" && cp -R "$src" "$dest.new" \
-  && printf '%s\n' "repo=$repo" "ref=$ref" "sha=$sha" > "$dest.new/.cloud-kit" \
-  && rm -rf "$dest" && mv "$dest.new" "$dest" \
+mkdir -p "$claude_dir/skills" && stage="$(mktemp -d "$claude_dir/skills/.pstack-incoming.XXXXXX")" \
+  && cp -R "$src/." "$stage/" && chmod 755 "$stage" \
+  && printf '%s\n' "repo=$repo" "ref=$ref" "sha=$sha" > "$stage/.cloud-kit" \
+  && rm -rf "$dest" && mv "$stage" "$dest" \
   || skip "could not write $dest"
 
 finish "installed $sha ($ref) at $dest: $(find "$dest/skills" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ') skills, $(find "$dest/agents" -name '*.md' | wc -l | tr -d ' ') agents"

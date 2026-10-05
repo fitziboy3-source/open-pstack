@@ -52,12 +52,18 @@ run "$home"
 check "a second run exits 0" test "$code" -eq 0
 check "a second run installs a skill the branch added" test -f "$dest/skills/added/SKILL.md"
 check "a second run removes a skill the branch dropped" test ! -e "$dest/skills/bro"
-check "a second run leaves no staging folder" test ! -e "$dest.new"
+check "a second run leaves nothing but the kit in the skills directory" test "$(ls -A "$home/skills")" = pstack
 
+installed="$(git -C "$kit" rev-parse HEAD)"
+mkdir -p "$dest.new" && : > "$dest.new/not-ours"
 run "$home" PSTACK_KIT_REF=no-such-branch
 check "an unreachable kit exits 0" test "$code" -eq 0
 check "an unreachable kit says SKIPPED on the last line" test "${last#pstack-cloud-setup: SKIPPED}" != "$last"
 check "an unreachable kit leaves the installed kit in place" test -f "$dest/skills/added/SKILL.md"
+check "an unreachable kit names the kit this session still has" test "${last%kept the kit already installed ($installed)}" != "$last"
+check "a failed run deletes no folder it did not create" test -f "$dest.new/not-ours"
+run "$home"
+check "a later good run still installs beside a folder it does not own" test -f "$dest.new/not-ours" -a "$code" -eq 0 -a "${last#pstack-cloud-setup: installed}" != "$last"
 
 git -C "$kit" rm -r --quiet plugins && : > "$kit/README" && commit "no plugin"
 run "$home"
@@ -71,6 +77,7 @@ if [ "$(id -u)" -ne 0 ]; then
   run "$locked/claude"
   check "an unwritable config directory exits 0" test "$code" -eq 0
   check "an unwritable config directory says SKIPPED on the last line" test "${last#pstack-cloud-setup: SKIPPED}" != "$last"
+  check "a failed first install says the session has no kit" test "${last%this session has no pstack kit}" != "$last"
 fi
 
 [ "$fail" -eq 0 ] && note "cloud-setup: all checks passed"
