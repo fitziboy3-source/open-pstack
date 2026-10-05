@@ -27,7 +27,9 @@
 #   PSTACK_KIT_REF     branch or tag to install      (default: adam/release)
 #   PSTACK_CLAUDE_DIR  Claude Code config directory  (default: $CLAUDE_CONFIG_DIR, else ~/.claude)
 
-set -uo pipefail
+# Every failure below is handled by name, so exit-on-error stays off even when
+# the runner starts this script with it on.
+set +e -uo pipefail
 
 repo="${PSTACK_KIT_REPO:-https://github.com/fitziboy3-source/open-pstack.git}"
 ref="${PSTACK_KIT_REF:-adam/release}"

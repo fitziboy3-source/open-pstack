@@ -24,12 +24,20 @@ cp -R "$repo/plugins/pstack" "$kit/plugins/pstack"
 commit() { git -C "$kit" add -A && git -C "$kit" -c user.name=t -c user.email=t@t commit --quiet -m "$1"; }
 commit "kit"
 
-run() { # run <claude dir> [VAR=value...] ; sets $out and $code
+shell_flags=""
+run() { # run <claude dir> [VAR=value...] ; sets $out, $code and $last
   local dir="$1"; shift
-  out="$(env PSTACK_KIT_REPO="file://$kit" PSTACK_KIT_REF=release PSTACK_CLAUDE_DIR="$dir" "$@" bash "$script" 2>&1)"
+  out="$(env PSTACK_KIT_REPO="file://$kit" PSTACK_KIT_REF=release PSTACK_CLAUDE_DIR="$dir" "$@" bash $shell_flags "$script" 2>&1)"
   code=$?
   last="$(printf '%s\n' "$out" | tail -n 1)"
 }
+
+# A runner may start the script with exit-on-error set. The contract still holds.
+shell_flags="-e"
+run "$tmp/strict" PSTACK_KIT_REF=no-such-branch
+check "a failed first install under bash -e exits 0" test "$code" -eq 0
+check "a failed first install under bash -e still ends with the result line" test "${last%this session has no pstack kit}" != "$last"
+shell_flags=""
 
 home="$tmp/claude"
 dest="$home/skills/pstack"
