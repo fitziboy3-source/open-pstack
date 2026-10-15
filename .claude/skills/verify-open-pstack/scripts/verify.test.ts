@@ -4,9 +4,10 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import data from '../features/registry.json';
-import { requiredFeatures, validateRegistry } from './core.ts';
+import { requiredFeatures, requiredHarnesses, validateRegistry } from './core.ts';
 import { parseChangedFiles, Publisher } from './github.ts';
-import { command, sha256 } from './io.ts';
+import { command, sha256, type Command } from './io.ts';
+import { MacDriver } from './harness.ts';
 import { evidence, verify } from './verify.ts';
 import { HARNESSES, REPO, type Driver, type GitHub, type Pull, type Receipt } from './types.ts';
 
@@ -31,10 +32,11 @@ function fixture(runtime = false, selfTest = false) {
     async status(sha, state, target) { mark(`status:${state}:${sha}`); expect(target).toBe(state === 'success' || comments.length ? URL : `https://github.com/${REPO}/pull/123`); },
   };
   const driver: Driver = {
-    async prepare(r) { mark('prepare'); return HARNESSES.map(harness => ({ harness, sha: r.sha, cliVersion: 'test', pluginVersion: '1.5.0', treeHash: HASH, location: `/isolated/${harness}/plugin`, home: `/isolated/${harness}` })); },
-    async exercise(r) { mark('exercise'); return HARNESSES.flatMap(harness => requiredFeatures(r).map(feature => ({ harness, feature, surface: 'native surface', action: 'invoke', observed: 'fixture changed', reviewer: 'recipe' as const, assertions: ['invoke:skill-loaded'], transcript: 'retained.log', transcriptHash: sha256('reviewed transcript'), artifacts: [{ path: 'fixture.json', sha256: sha256('reviewed artifact') }] }))); },
+    async preflight() { mark('preflight'); },
+    async prepare(r) { mark('prepare'); return requiredHarnesses(r).map(harness => ({ harness, sha: r.sha, cliVersion: 'test', pluginVersion: '1.5.0', treeHash: HASH, location: `/isolated/${harness}/plugin`, home: `/isolated/${harness}` })); },
+    async exercise(r) { mark('exercise'); return requiredHarnesses(r).flatMap(harness => requiredFeatures(r, harness).map(feature => ({ harness, feature, surface: 'native surface', action: 'invoke', observed: 'fixture changed', reviewer: 'recipe' as const, assertions: ['invoke:skill-loaded'], transcript: 'retained.log', transcriptHash: sha256('reviewed transcript'), artifacts: [{ path: 'fixture.json', sha256: sha256('reviewed artifact') }] }))); },
   };
-  const options = { pr: 123, root, selfTest, publisherRevision: REVISION, registry: validateRegistry(data), github, driver, persist: async (r: Receipt) => { saved.push(structuredClone(r)); } };
+  const options = { pr: 123, root, selfTest, features: ['claude:skill-invocation:architect'], publisherRevision: REVISION, registry: validateRegistry(data), github, driver, persist: async (r: Receipt) => { saved.push(structuredClone(r)); } };
   return { options, calls, saved, comments, pull, hook: (fn: typeof hook) => { hook = fn; } };
 }
 
@@ -42,22 +44,46 @@ describe('exact-head evidence publication', () => {
   test('docs-only publishes one no-runtime comment and exact-SHA live-gate without harnesses or PR mutation', async () => {
     const f = fixture(), receipt = await verify(f.options);
     expect(receipt.status).toBe('success'); expect(receipt.sha).toBe(SHA); expect(receipt.publisherRevision).toBe(REVISION);
-    expect(f.calls).not.toContain('prepare'); expect(f.calls).not.toContain('exercise');
+    expect(f.calls).not.toContain('preflight'); expect(f.calls).not.toContain('prepare'); expect(f.calls).not.toContain('exercise');
     expect(f.calls.filter(call => call === 'comment')).toHaveLength(1);
     expect(f.calls).toContain(`status:success:${SHA}`);
     expect(f.comments[0]).toContain('PASSED — no runtime change'); expect(f.comments[0]).toContain(REVISION);
     expect(Object.keys(receipt)).not.toContain('proposedTemplate'); expect(Object.keys(receipt)).not.toContain('madeReady'); expect(Object.keys(receipt)).not.toContain('compensation');
   });
 
-  test('runtime selection and explicit self-test exercise every feature in both harnesses', async () => {
+  test('a runtime change runs only the named features, plus project-skill in both harnesses under self-test', async () => {
     const f = fixture(true, true), receipt = await verify(f.options);
-    expect(requiredFeatures(receipt).sort()).toEqual(['project-skill', 'skill-invocation:architect']);
+    expect(receipt.selection.features).toEqual(['claude:skill-invocation:architect']);
     expect(receipt.installations.map(record => record.harness).sort()).toEqual([...HARNESSES]);
-    expect(receipt.observations).toHaveLength(4);
-    for (const feature of requiredFeatures(receipt)) for (const harness of HARNESSES) {
-      expect(receipt.observations.filter(record => record.feature === feature && record.harness === harness)).toHaveLength(1);
-    }
-    expect(f.comments).toHaveLength(1); expect(f.comments[0]).toContain('assertions machine-checked');
+    expect(receipt.observations.map(record => `${record.harness}/${record.feature}`).sort()).toEqual(['claude/project-skill', 'claude/skill-invocation:architect', 'codex/project-skill']);
+    expect(f.comments).toHaveLength(1); expect(f.comments[0]).toContain('PASSED — named features verified');
+    expect(f.calls.indexOf('preflight')).toBeLessThan(f.calls.indexOf('prepare'));
+    const plain = await verify(fixture(true).options);
+    expect(plain.installations.map(record => record.harness)).toEqual(['claude']);
+    expect(plain.observations.map(record => `${record.harness}/${record.feature}`)).toEqual(['claude/skill-invocation:architect']);
+  });
+
+  test('a runtime change without --feature fails before any install or GitHub write', async () => {
+    const f = fixture(true); f.options.features = [];
+    await expect(verify(f.options)).rejects.toThrow('requires at least one --feature');
+    expect(f.calls.some(call => ['prepare', 'exercise', 'comment'].includes(call) || call.startsWith('status:'))).toBe(false);
+  });
+
+  test('a logged-out Claude stops the real driver before any install or GitHub write', async () => {
+    const f = fixture(true), calls: string[][] = [];
+    const run: Command = async args => {
+      calls.push(args);
+      if (args.join(' ') === 'claude auth status') return command([process.execPath, '-e', 'console.log(JSON.stringify({ loggedIn: false })); process.exit(1)']);
+      return args.includes('--version') ? 'version' : '--plugin-dir --settings --setting-sources --json local path';
+    };
+    f.options.driver = new MacDriver(run, async () => { throw new Error('no session expected'); });
+    const platform = Object.getOwnPropertyDescriptor(process, 'platform')!;
+    Object.defineProperty(process, 'platform', { ...platform, value: 'darwin' });
+    try { await expect(verify(f.options)).rejects.toThrow('Claude login check failed: `claude auth status` did not report "loggedIn": true; run `claude auth login` from a shell on this Mac, not over SSH'); }
+    finally { Object.defineProperty(process, 'platform', platform); }
+    expect(f.calls.some(call => call === 'comment' || call.startsWith('status:'))).toBe(false);
+    expect(calls.some(args => args.join(' ').startsWith('git clone') || args.join(' ').startsWith('codex plugin ') && !args.includes('--help'))).toBe(false);
+    expect(calls).toContainEqual(['claude', 'auth', 'status']);
   });
 
   test('self-test alone runs project proof in both harnesses', async () => {
@@ -75,8 +101,11 @@ describe('exact-head evidence publication', () => {
         await expect(verify(f.options)).rejects.toThrow('rerun from that checkout');
         expect(f.calls.some(call => ['prepare', 'exercise', 'cleanup', 'comment'].includes(call) || call.startsWith('status:'))).toBe(false);
       } else {
-        expect((await verify(f.options)).status).toBe('success');
+        const receipt = await verify(f.options);
+        expect(receipt.status).toBe('success');
         expect(f.calls).toContain('prepare'); expect(f.calls).toContain('exercise');
+        // A verifier change keeps native project proof in both harnesses even when only another feature is named.
+        expect(receipt.observations.map(record => `${record.harness}/${record.feature}`).sort()).toEqual(['claude/project-skill', 'claude/skill-invocation:architect', 'codex/project-skill']);
       }
     }
   });

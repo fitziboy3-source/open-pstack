@@ -3,7 +3,7 @@ import { HARNESSES, REPO, type ChangedFile, type Harness, type Receipt, type Reg
 export function validateRegistry(value: unknown): Registry {
   if (!value || typeof value !== 'object') throw new Error('Invalid feature registry');
   const r = value as Registry;
-  for (const key of ['skills', 'shared', 'assets', 'setup', 'runner', 'tools', 'project', 'nonRuntime'] as const) {
+  for (const key of ['skills', 'shared', 'catalog', 'assets', 'setup', 'runner', 'tools', 'project', 'nonRuntime'] as const) {
     if (!Array.isArray(r[key]) || r[key].some(v => typeof v !== 'string' || !v || v.includes('..'))) {
       throw new Error(`Invalid registry.${key}`);
     }
@@ -28,7 +28,10 @@ export function classify(files: ChangedFile[], registry: Registry): Selection {
       if (path !== 'plugins/pstack/assets/logo.png') throw new Error(`Unmapped asset consumer: ${path}`);
       features.add('assets:codex'); covered = true;
     }
-    if (registry.shared.some(p => matches(path, p))) {
+    // Catalog paths change only model and provider facts, so they skip shared expansion and the skill match.
+    const catalog = registry.catalog.some(p => matches(path, p));
+    if (catalog) { ['catalog', 'setup', 'runner'].forEach(f => features.add(f)); covered = true; }
+    if (!catalog && registry.shared.some(p => matches(path, p))) {
       registry.skills.forEach(s => skills.add(s));
       ['setup', 'runner', 'shipped-tools'].forEach(f => features.add(f));
       covered = true;
@@ -36,8 +39,10 @@ export function classify(files: ChangedFile[], registry: Registry): Selection {
     for (const [key, feature] of [['setup', 'setup'], ['runner', 'runner'], ['tools', 'shipped-tools'], ['project', 'project-skill']] as const) {
       if (registry[key].some(p => matches(path, p))) { features.add(feature); covered = true; }
     }
+    // Reflect's Codex transcript lookup runs this launcher and script; no other skill consumes them.
+    if (/^plugins\/pstack\/skills\/poteto-mode\/scripts\/resolve-codex-transcript(?:\.ts)?$/.test(path)) { skills.add('reflect'); covered = true; }
     const skill = /^plugins\/pstack\/skills\/([^/]+)\/(.+)$/.exec(path);
-    if (skill && registry.skills.includes(skill[1]!)) {
+    if (!catalog && skill && registry.skills.includes(skill[1]!)) {
       const leaf = skill[2]!;
       if (leaf === 'SKILL.md' || leaf.startsWith('references/') || leaf.startsWith('playbooks/')) {
         skills.add(skill[1]!); covered = true;
@@ -58,9 +63,9 @@ export function newReceipt(pr: number, sha: string, base: string, selfTest: bool
     started: new Date().toISOString(), cleanup: 'Run state retained; operator owns cleanup.' };
 }
 
-export function requiredFeatures(receipt: Receipt, harness?: Harness): string[] {
-  const features = [...new Set([...receipt.selection.features, ...(receipt.selfTest ? ['project-skill'] : [])])];
-  return harness ? features.filter(feature => feature !== 'assets:codex' || harness === 'codex') : features;
+export function requiredFeatures(receipt: Receipt, harness: Harness): string[] {
+  const named = receipt.selection.features.filter(f => f.startsWith(`${harness}:`)).map(f => f.slice(harness.length + 1));
+  return [...new Set([...named, ...(receipt.selfTest ? ['project-skill'] : [])])];
 }
 
 export function requiredHarnesses(receipt: Receipt): Harness[] {
@@ -68,9 +73,8 @@ export function requiredHarnesses(receipt: Receipt): Harness[] {
 }
 
 export function completeEvidence(receipt: Receipt): void {
-  const features = requiredFeatures(receipt);
-  if (!features.length && !receipt.selection.noRuntime) throw new Error('No classification');
   const harnesses = requiredHarnesses(receipt);
+  if (!harnesses.length && !receipt.selection.noRuntime) throw new Error('No features named');
   for (const harness of harnesses) {
     const installs = receipt.installations.filter(i => i.harness === harness && i.sha === receipt.sha);
     if (installs.length !== 1 || !installs[0]!.location || !/^[a-f0-9]{64}$/.test(installs[0]!.treeHash) || !installs[0]!.cliVersion || !installs[0]!.pluginVersion || !installs[0]!.home) throw new Error(`Missing installation: ${harness}`);

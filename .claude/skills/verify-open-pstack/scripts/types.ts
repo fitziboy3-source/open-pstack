@@ -10,6 +10,8 @@ export interface ChangedFile { filename: string; previous_filename?: string }
 export interface Registry {
   skills: string[];
   shared: string[];
+  /** The generated model catalog and native agents, and the registry sources they come from. */
+  catalog: string[];
   assets: string[];
   setup: string[];
   runner: string[];
@@ -46,8 +48,13 @@ export interface SessionRecord {
   skills: string[];
   /** Shell commands the harness completed successfully. */
   commands: string[];
+  /** Claude: every tool call, with `parent` set to the Agent call's id for a subagent's own calls. Codex: every completed shell command, with its captured output. */
+  tools: { name: string; id: string; input: Record<string, any>; parent: string | null; result?: string; failed: boolean }[];
+  /** Claude: stdout of each successful SessionStart hook, which Claude adds to context. Codex: each developer message in the rollout. */
+  context: string[];
 }
 export interface Driver {
+  preflight(receipt: Receipt): Promise<void>;
   prepare(receipt: Receipt): Promise<Installation[]>;
   exercise(receipt: Receipt): Promise<Observation[]>;
   cleanup?(receipt: Receipt): Promise<void>;

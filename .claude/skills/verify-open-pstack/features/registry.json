@@ -1,12 +1,12 @@
 {
   "skills": [
-    "architect", "arena", "automate-me", "babysit", "blast-radius", "bro",
+    "architect", "arena", "automate-me", "babysit", "benchmark-checklist", "blast-radius", "bro", "correct",
     "create-verification-skill", "deslop", "figure-it-out", "fix-ci", "fix-merge-conflicts",
-    "get-pr-comments", "how", "interrogate", "maintain-verification-skill",
-    "make-pr-easy-to-review", "no-comments", "poteto-mode",
+    "get-pr-comments", "how", "interrogate", "ketchup", "maintain-verification-skill",
+    "make-pr-easy-to-review", "no-comments", "poteto-help", "poteto-mode",
     "principle-attack-the-premise", "principle-boundary-discipline", "principle-build-the-lever",
     "principle-encode-lessons-in-structure", "principle-exhaust-the-design-space",
-    "principle-experience-first", "principle-fix-root-causes", "principle-foundational-thinking",
+    "principle-experience-first", "principle-explain-the-number", "principle-fix-root-causes", "principle-foundational-thinking",
     "principle-guard-the-context-window", "principle-laziness-protocol",
     "principle-make-operations-idempotent", "principle-migrate-callers-then-delete-legacy-apis",
     "principle-minimize-reader-load", "principle-model-the-domain", "principle-never-block-on-the-human",
@@ -21,8 +21,23 @@
   "shared": [
     "plugins/pstack/.claude-plugin/plugin.json", "plugins/pstack/.codex-plugin/plugin.json",
     ".claude-plugin/marketplace.json", ".agents/plugins/marketplace.json",
-    "plugins/pstack/agents/**", "plugins/pstack/hooks/**",
+    "plugins/pstack/agents/poteto-agent.md", "plugins/pstack/agents/comment-sicko.md", "plugins/pstack/hooks/**",
     "plugins/pstack/skills/poteto-mode/references/**"
+  ],
+  "catalog": [
+    "plugins/pstack/skills/poteto-mode/references/model-catalog.md",
+    "plugins/pstack/skills/poteto-mode/scripts/runner/registry/**",
+    "plugins/pstack/skills/poteto-mode/scripts/runner/providers/**",
+    "plugins/pstack/agents/pstack-fable-low.md",
+    "plugins/pstack/agents/pstack-fable-medium.md",
+    "plugins/pstack/agents/pstack-fable-high.md",
+    "plugins/pstack/agents/pstack-fable-xhigh.md",
+    "plugins/pstack/agents/pstack-fable-max.md",
+    "plugins/pstack/agents/pstack-opus-low.md",
+    "plugins/pstack/agents/pstack-opus-medium.md",
+    "plugins/pstack/agents/pstack-opus-high.md",
+    "plugins/pstack/agents/pstack-opus-xhigh.md",
+    "plugins/pstack/agents/pstack-opus-max.md"
   ],
   "assets": ["plugins/pstack/assets/**"],
   "setup": ["plugins/pstack/skills/setup-pstack/SKILL.md"],
@@ -42,13 +57,15 @@
   ],
   "project": [
     ".claude/skills/verify-open-pstack/**", ".agents/skills/verify-open-pstack",
-    "AGENTS.md", "CLAUDE.md", "tests/skill-collision-repro.sh"
+    "AGENTS.md", "CLAUDE.md", "tests/skill-collision-repro.sh",
+    ".github/workflows/windows-hooks.yml"
   ],
   "nonRuntime": [
-    "README.md", "CHANGES.md", "LICENSE", "LICENSE.md", "UPSTREAM.md",
+    "README.md", "REVIEW.md", "CHANGES.md", "LICENSE", "LICENSE.md", "UPSTREAM.md",
     "NOTICE.md", "README-UPSTREAM.md", "LICENSE-cursor-team-kit", "LICENSE-superpowers",
     ".gitignore", ".mergify.yml", "docs/**", "assets/**",
     "plugins/pstack/skills/poteto-mode/scripts/bootstrap.test.ts",
-    "plugins/pstack/skills/poteto-mode/scripts/check-plan.test.ts"
+    "plugins/pstack/skills/poteto-mode/scripts/check-plan.test.ts",
+    "plugins/pstack/skills/poteto-mode/scripts/resolve-codex-transcript.test.ts", "scripts/release.py", "scripts/release_test.py"
   ]
 }
