@@ -44,6 +44,118 @@ export const FAMILIES = [
     upstream: "opus",
     rolling: { revisionPrefix: "claude-opus-" },
   }),
+  family({
+    name: "luna",
+    label: "GPT-6 Luna",
+    provider: "codex",
+    model: "gpt-6-luna",
+    efforts: UP_TO_MAX, // no ultra in `codex debug models`, Codex CLI 0.159.0
+    defaultEffort: "max",
+    upstream: null,
+  }),
+  family({
+    name: "sonnet",
+    label: "Sonnet",
+    provider: "claude",
+    model: "sonnet",
+    efforts: UP_TO_MAX,
+    defaultEffort: "max",
+    upstream: null,
+    rolling: { revisionPrefix: "claude-sonnet-" },
+  }),
+  family({
+    name: "opus-5-5",
+    label: "Opus 5.5",
+    provider: "claude",
+    model: "claude-opus-5-5", // an exact pin: resolveModel matches it before the opus revision pattern
+    efforts: UP_TO_MAX,
+    defaultEffort: "max",
+    upstream: "claude-opus-5-5-xhigh",
+  }),
+  family({
+    name: "swe-2",
+    label: "SWE-2",
+    provider: "devin",
+    model: "swe-2",
+    // `devin models list --format json`, Devin CLI 3000.10.21: no low variant. The bare slug runs swe-2-max.
+    efforts: { medium: "swe-2-medium", high: "swe-2-high", max: "swe-2-max" },
+    defaultEffort: "max",
+    upstream: null,
+  }),
+  family({
+    name: "swe-1.6",
+    label: "SWE-1.6",
+    provider: "devin",
+    model: "swe-1.6",
+    efforts: { default: "swe-1-6" }, // the family's single variant
+    defaultEffort: "default",
+    upstream: null,
+  }),
+  family({
+    name: "deepseek-v4.1-flash-free",
+    label: "DeepSeek V4.1 Flash (OpenCode Zen)",
+    provider: "opencode",
+    model: "opencode/deepseek-v4.1-flash-free",
+    efforts: ["low", "high", "max"], // `opencode models --verbose` variants, OpenCode 1.19.1
+    defaultEffort: "max",
+    upstream: null,
+  }),
+  family({
+    name: "deepseek-flash",
+    label: "DeepSeek Flash (dsh)",
+    provider: "dsh",
+    model: "deepseek-flash",
+    efforts: ["low", "high", "max"], // dsh 0.2.0-rc.2 fails `medium` locally
+    defaultEffort: "max",
+    upstream: null,
+  }),
+  family({
+    name: "deepseek-v4-pro",
+    label: "DeepSeek V4 Pro (dsh)",
+    provider: "dsh",
+    model: "deepseek-v4-pro",
+    efforts: ["low", "high", "max"],
+    defaultEffort: "max",
+    upstream: null,
+  }),
+  family({
+    name: "amp-deepseek-v4.1-flash",
+    label: "DeepSeek V4.1 Flash (Amp)",
+    provider: "amp",
+    model: "deepseek-v4.1-flash",
+    efforts: { default: "deepseek-v4.1-flash" }, // an official Amp mode with no effort variants
+    defaultEffort: "default",
+    upstream: null,
+  }),
+  family({
+    name: "gemini-3.8-flash",
+    label: "Gemini 3.8 Flash (Antigravity)",
+    provider: "agy",
+    model: "gemini-3.8-flash",
+    // `agy models`, Antigravity CLI 1.3.6. Gemini 3.7 Flash is not listed. The bare slug runs gemini-3.8-flash-high.
+    efforts: { low: "gemini-3.8-flash-low", medium: "gemini-3.8-flash-medium", high: "gemini-3.8-flash-high" },
+    defaultEffort: "high",
+    upstream: null,
+  }),
+  family({
+    name: "composer-2.5",
+    label: "Composer 2.5 (Cursor)",
+    provider: "cursor",
+    model: "composer-2.5",
+    efforts: { default: "composer-2.5" }, // `cursor-agent models`, Cursor CLI 2026.10.14-0f9edde
+    defaultEffort: "default",
+    upstream: null,
+  }),
+  family({
+    name: "gemini-3.7-flash",
+    label: "Gemini 3.7 Flash (Cursor)",
+    provider: "cursor",
+    model: "gemini-3.7-flash",
+    // `cursor-agent models`, Cursor CLI 2026.10.14-0f9edde. There is no bare `gemini-3.7-flash` ID.
+    efforts: { low: "gemini-3.7-flash-low", medium: "gemini-3.7-flash-medium", high: "gemini-3.7-flash-high" },
+    defaultEffort: "high",
+    upstream: null,
+  }),
 ] as const;
 export type FamilyName = (typeof FAMILIES)[number]["name"];
 
@@ -76,4 +188,16 @@ export const RELEASED_PAIRS = [
   { pair: "codex:gpt-6.1-sol", family: "sol" },
   { pair: "grok:grok-4.6", family: "grok" },
   { pair: "grok:grok-4.7", family: "grok" },
+  { pair: "codex:gpt-6-luna", family: "luna" },
+  { pair: "claude:sonnet", family: "sonnet" },
+  { pair: "claude:claude-opus-5-5", family: "opus-5-5" },
+  { pair: "devin:swe-2", family: "swe-2" },
+  { pair: "devin:swe-1.6", family: "swe-1.6" },
+  { pair: "opencode:opencode/deepseek-v4.1-flash-free", family: "deepseek-v4.1-flash-free" },
+  { pair: "dsh:deepseek-flash", family: "deepseek-flash" },
+  { pair: "dsh:deepseek-v4-pro", family: "deepseek-v4-pro" },
+  { pair: "amp:deepseek-v4.1-flash", family: "amp-deepseek-v4.1-flash" },
+  { pair: "agy:gemini-3.8-flash", family: "gemini-3.8-flash" },
+  { pair: "cursor:composer-2.5", family: "composer-2.5" },
+  { pair: "cursor:gemini-3.7-flash", family: "gemini-3.7-flash" },
 ] as const satisfies readonly ReleasedPair<FamilyName>[];

@@ -12,6 +12,7 @@ import { evidence, verify } from './verify.ts';
 import { command, freshRoot, isolatedEnv, retainedFile, treeHash, type Command, type Session } from './io.ts';
 import { REPO, type Harness, type Installation, type Receipt } from './types.ts';
 const roots: string[] = [];
+const gitEnv = { PATH: process.env.PATH ?? '', GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' };
 async function fixture(): Promise<string> { const root = await realpath(await mkdtemp(join(tmpdir(), 'pstack-test-'))); roots.push(root); return root; }
 const originalEnv = { HOME: process.env.HOME, USER: process.env.USER, LOGNAME: process.env.LOGNAME,
   CLAUDE_CONFIG_DIR: process.env.CLAUDE_CONFIG_DIR, CODEX_HOME: process.env.CODEX_HOME };
@@ -125,10 +126,10 @@ describe('isolated harness boundaries', () => {
     await writeFile(join(repository, '.claude/skills/verify-open-pstack/SKILL.md'), 'pinned project skill');
     await mkdir(join(repository, '.agents/skills'), { recursive: true });
     await symlink('../../.claude/skills/verify-open-pstack', join(repository, '.agents/skills/verify-open-pstack'));
-    await command(['git', 'init', repository]);
-    await command(['git', 'add', '.'], { cwd: repository });
-    await command(['git', '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.com', '-c', 'commit.gpgsign=false', 'commit', '-m', 'fixture'], { cwd: repository });
-    const sha = (await command(['git', 'rev-parse', 'HEAD'], { cwd: repository })).trim(), actualGit: Command = command;
+    await command(['git', 'init', repository], { env: gitEnv });
+    await command(['git', 'add', '.'], { cwd: repository, env: gitEnv });
+    await command(['git', '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.com', '-c', 'commit.gpgsign=false', 'commit', '-m', 'fixture'], { cwd: repository, env: gitEnv });
+    const sha = (await command(['git', 'rev-parse', 'HEAD'], { cwd: repository, env: gitEnv })).trim(), actualGit: Command = command;
     await mkdir(operatorHome, { mode: 0o700 });
     const platform = Object.getOwnPropertyDescriptor(process, 'platform')!;
     const previous = { HOME: process.env.HOME, USER: process.env.USER, LOGNAME: process.env.LOGNAME };
@@ -237,7 +238,7 @@ describe('isolated harness boundaries', () => {
     await writeFile(join(config, instructions), original);
     if (harness === 'codex') await writeFile(join(config, 'pstack-models.md'), original);
     const receipt = newReceipt(111, 'a'.repeat(40), 'b'.repeat(40), false, root);
-    receipt.selection = { paths: [], skills: [], features: [`${harness}:setup`], noRuntime: false };
+    receipt.runFeatures = [`${harness}:setup`];
     receipt.installations = [{ harness, home, location: join(workspace, 'plugins/pstack'), sha: receipt.sha, cliVersion: 'test', pluginVersion: 'test', treeHash: await treeHash(join(workspace, 'plugins/pstack')), sourceHash: await sourceDigest(workspace) }];
     const driver = new MacDriver(command, async args => {
       expect(args[0]).toBe(harness);
@@ -301,7 +302,7 @@ async function candidate(harness: Harness): Promise<{ root: string; installation
 }
 function selected(root: string, installation: Installation, features: string[]): Receipt {
   const receipt = newReceipt(111, 'a'.repeat(40), 'b'.repeat(40), false, root);
-  receipt.selection = { paths: [], skills: [], features: features.map(feature => `${installation.harness}:${feature}`), noRuntime: false };
+  receipt.runFeatures = features.map(feature => `${installation.harness}:${feature}`);
   receipt.installations = [installation];
   return receipt;
 }

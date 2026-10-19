@@ -41,6 +41,22 @@ describe("runner CLI parsing", () => {
     );
   });
 
+  it("defaults a writer to the bounded sandbox and passes an explicit full-access opt-in", () => {
+    const writer = argv().map((value) => (value === "read-only" ? "isolated-write" : value));
+    expect(parseArgs(writer)?.access).toEqual({ mode: "isolated-write", sandbox: "bounded" });
+    expect(parseArgs([...writer, "--writer-sandbox", "full-access"])?.access)
+      .toEqual({ mode: "isolated-write", sandbox: "full-access" });
+    expect(() => parseArgs(argv(["--writer-sandbox", "full-access"])))
+      .toThrow("writer sandbox full-access requires mode isolated-write");
+  });
+
+  it("names the writer sandbox flag and its default in the help text", async () => {
+    let stdout = "";
+    await main(["--help"], Date.now(), { stdout: (value) => { stdout += value; }, stderr: () => {} });
+    expect(stdout).toContain("[--writer-sandbox <bounded|full-access>]");
+    expect(stdout).toContain("--writer-sandbox\ndefaults to bounded");
+  });
+
   it("accepts the ultra effort", () => {
     const args = argv().map((value) => (value === "max" ? "ultra" : value));
     expect(parseArgs(args)?.effort).toBe("ultra");
@@ -62,18 +78,18 @@ describe("runner CLI parsing", () => {
     let stdout = "";
     expect(await main(["--help"], Date.now(), { stdout: (value) => { stdout += value; }, stderr: () => {} })).toBe(0);
     expect(stdout).toStartWith(
-      "Usage: pstack-runner --parent <claude|codex> --provider <claude|codex|grok> \\\n"
+      "Usage: pstack-runner --parent <claude|codex> --provider <claude|codex|grok|devin|opencode|dsh|amp|agy|cursor> \\\n"
     );
   });
 
   it("refuses an unnormalized Claude revision with a usage error", async () => {
     let stderr = "";
     const args = argv().map((value) =>
-      value === "claude" ? "codex" : value === "codex" ? "claude" : value === "gpt-5.6-sol" ? "claude-opus-5-5" : value
+      value === "claude" ? "codex" : value === "codex" ? "claude" : value === "gpt-5.6-sol" ? "claude-opus-5-6" : value
     );
     expect(await main(args, Date.now(), { stdout: () => {}, stderr: (value) => { stderr += value; } })).toBe(64);
     expect(stderr).toStartWith(
-      "error: Claude model claude-opus-5-5 is a version pin; normalize it to opus before invoking the runner\n"
+      "error: Claude model claude-opus-5-6 is a version pin; normalize it to opus before invoking the runner\n"
     );
   });
 });

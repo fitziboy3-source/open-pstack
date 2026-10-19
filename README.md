@@ -91,9 +91,9 @@ In Codex, ask:
 Use pstack:setup-pstack to configure pstack.
 ```
 
-Setup checks the models you can actually run, shows how each one will start, and asks before saving the choices. The default review panel uses Opus, Sol, and Grok, and setup probes only the models your roles use. Fable remains available.
+Setup checks the models you can actually run, shows how each one will start, and asks before saving the choices. The default review panel uses Opus, Sol, and Grok, and setup probes only the models your roles use. Fable, Sonnet, Luna and an exact Opus pin remain available.
 
-An older model sheet starts using the rolling aliases in memory as soon as this release is installed. Run setup once after updating to persist that migration. It replaces versioned Fable and Opus entries while preserving every role assignment and effort selection.
+An older model sheet starts using the rolling aliases in memory as soon as this release is installed. Run setup once after updating to persist that migration. It replaces versioned entries of a rolling-alias family, such as Opus, while preserving every role assignment and effort selection. A registered exact pin is kept.
 
 A model sheet from an earlier release keeps its panel. To take the new defaults, delete those role lines and run setup again; setup fills missing roles from the defaults. An entry for a model that a later release replaced keeps running until the next setup run asks you to replace it.
 
@@ -132,6 +132,8 @@ That is the main workflow. The other skills are there when poteto-mode needs the
 | `reflect` | A hard task is finished and its lessons should improve the next run. |
 | `correct` | Agents keep making the same mistake in a repository and you want a check that stops it. |
 | `poteto-help` | You want to know which skill, playbook, or principle fits a question. |
+| `in-your-own-words` | You want the agent to restate your goal and the problem before it starts. |
+| `sharpen` | You want a task approached the way a top expert would, aimed at what you are really after, without overspecifying it. |
 
 Plugin skills include `pstack:` in their name. In Claude Code, invoke a native skill such as `/pstack:architect`. In Codex, ask for the skill, such as `Use pstack:architect for this design.` See the [technical reference](docs/reference.md) for the full list.
 
@@ -168,7 +170,7 @@ This repository also keeps:
 
 ## Staying close to Lauren's pstack
 
-Open Pstack 1.8.0 tracks pstack 0.15.20 at Cursor commit [`1b6d44ff26d4e242f4e8f68c391e6d2f7ca16def`](https://github.com/cursor/plugins/commit/1b6d44ff26d4e242f4e8f68c391e6d2f7ca16def).
+Open Pstack 1.15.0 tracks pstack 0.15.25 at Cursor commit [`99743e9c151c8537cbbf1f98bb38f34ef3368453`](https://github.com/cursor/plugins/commit/99743e9c151c8537cbbf1f98bb38f34ef3368453).
 
 The two projects have separate version numbers. The pstack version identifies Lauren's upstream content. The Open Pstack version identifies the Claude Code and Codex package built from it.
 

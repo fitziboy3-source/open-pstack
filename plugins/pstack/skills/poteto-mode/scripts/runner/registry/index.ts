@@ -1,10 +1,11 @@
-import { ACCESS_MODES, EFFORTS, PARENTS, type Parent, UsageError } from "../types.ts";
-import { isRevision, type Lane, type ProviderAdapter } from "./contract.ts";
-import type { FamilyEntry, KeptPredecessor, ReleasedPair, RoleDefault } from "./family.ts";
+import { ACCESS_MODES, EFFORTS, PARENTS, type Parent, UsageError, WRITER_SANDBOXES } from "../types.ts";
+import { access, accessKind, isRevision, type Lane, type ProviderAdapter } from "./contract.ts";
+import { effortsOf, type FamilyEntry, type KeptPredecessor, modelIds, type ReleasedPair, type RoleDefault } from "./family.ts";
 import { FAMILIES, type FamilyName, RELEASED_PAIRS, ROLE_DEFAULTS } from "./models.ts";
 import { ADAPTERS } from "./providers.ts";
 
 export type { Lane, LaunchFacts, ParseResult } from "./contract.ts";
+export { effortsOf, modelIds } from "./family.ts";
 
 /** The only registry module code outside registry/ imports. */
 export interface Registry {
@@ -27,6 +28,8 @@ export interface LaneRequest {
   readonly model: string;
   readonly effort: string;
   readonly mode: string;
+  /** Absent means bounded. */
+  readonly writerSandbox?: string;
   readonly promptPath: string;
   readonly cwd: string;
   readonly outputPath: string;
@@ -63,7 +66,10 @@ function oneOf<T extends string>(name: string, value: string, choices: readonly 
 
 /** Raw request → Lane, or a UsageError. An unregistered pair runs unchanged. */
 export function resolveLane(request: LaneRequest): Lane {
-  const mode = oneOf("mode", request.mode, ACCESS_MODES);
+  const laneAccess = access(
+    oneOf("mode", request.mode, ACCESS_MODES),
+    request.writerSandbox === undefined ? undefined : oneOf("writer-sandbox", request.writerSandbox, WRITER_SANDBOXES)
+  );
   const parent = oneOf("parent", request.parent, Object.keys(PARENTS) as Parent[]);
   const adapter = REGISTRY.adapters.find((entry) => entry.id === request.provider);
   if (adapter === undefined) {
@@ -83,10 +89,21 @@ export function resolveLane(request: LaneRequest): Lane {
     );
   }
   const family = match.kind === "unregistered" ? null : match.family;
-  const offered = match.kind === "kept" ? match.predecessor.efforts : family?.efforts ?? EFFORTS;
+  // An unregistered model-ID pair names the CLI model ID itself, so no effort can be mapped onto it.
+  const offered = match.kind === "kept"
+    ? match.predecessor.efforts
+    : family === null
+      ? adapter.effortIn === "model-id" ? ["default" as const] : EFFORTS
+      : effortsOf(family);
   if (!offered.includes(effort)) {
     throw new UsageError(
       `effort ${effort} is not offered for ${adapter.id}:${request.model}; choose one of: ${offered.join(", ")}`
+    );
+  }
+  const kind = accessKind(laneAccess);
+  if (!adapter.launch.supports.includes(kind)) {
+    throw new UsageError(
+      `provider ${adapter.id} does not support ${kind}; it supports only: ${adapter.launch.supports.join(", ")}`
     );
   }
   return {
@@ -99,8 +116,9 @@ export function resolveLane(request: LaneRequest): Lane {
       rolling: family.rolling ?? null,
     },
     model: request.model,
+    cliModel: (family === null ? undefined : modelIds(family)?.[effort]) ?? request.model,
     effort,
-    access: { mode },
+    access: laneAccess,
     promptPath: request.promptPath,
     cwd: request.cwd,
     outputPath: request.outputPath,
