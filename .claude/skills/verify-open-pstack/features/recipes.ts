@@ -1,5 +1,6 @@
 // Headless recipes for every selectable feature. The trusted parent runs each case as one fresh
 // native session and evaluates `assert` against the parsed record and the fixture it created.
+import { createFormal, maintainFormal } from './formal.ts';
 import { Database } from 'bun:sqlite';
 import { lstat, mkdir, readFile, realpath, rm, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
@@ -737,6 +738,9 @@ const startupHook: Case = {
 
 /** Resolve a feature's cases, or fail with a named reason before any session starts. */
 export function recipe(feature: string, harness: Harness, routes: string[] = []): Case[] {
+  if (feature === 'skill-invocation:create-formal-verification-skill') return [createFormal()];
+  if (feature === 'skill-invocation:maintain-formal-verification-skill') return [maintainFormal()];
+  if (feature === 'skill-invocation:poteto-mode') return [routingOnly];
   if (feature === 'assets:codex') throw new Error('unsupported-native-consumer:assets:codex');
   if (feature === 'project-skill') return [projectSkill];
   if (feature === 'hook:startup') return [startupHook];
@@ -750,3 +754,18 @@ export function recipe(feature: string, harness: Harness, routes: string[] = [])
   if (!skill) throw new Error(`missing-recipe:${harness}/${feature}`);
   return [overrides[skill] ?? skillCase(skill, 'Apply it to the task in $DIR/TASK.md.')];
 }
+
+const routingOnly: Case = {
+  id: 'route-without-dispatch',
+  async prepare(f) {
+    await files(f.dir, { 'pstack-models.md': '# pstack model configuration\n\njudgment and prose: inherit-parent\n' });
+  },
+  prompt: f => `${invoke(f.harness, 'poteto-mode', `Do no engineering work and launch no model session or subagent. Use ${join(f.dir, 'pstack-models.md')} as this exercise's model sheet. Resolve judgment and prose and write only JSON to ${join(f.dir, 'route.json')}: {"descriptor":"<configured descriptor>","route":"native" or "external"}.`)} ${rules(f.dir)}`,
+  async assert(record, f) {
+    loaded(record, 'pstack:poteto-mode');
+    const path = join(f.dir, 'route.json');
+    if (!Bun.deepEquals(JSON.parse(await readFile(path, 'utf8')), { descriptor: 'inherit-parent', route: 'native' })) throw new Error('router-decision-mismatch');
+    if (record.tools.some(t => t.name === 'Agent' || t.name === 'Task' || /pstack-runner|codex exec|claude -p/.test(JSON.stringify(t.input)))) throw new Error('router-dispatched-unrequested-lane');
+    return { assertions: ['skill-loaded', 'configured-native-route', 'no-dispatch'], files: [path] };
+  },
+};

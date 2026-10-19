@@ -4,25 +4,34 @@ import { ROUTE } from '../features/recipes.ts';
 import { validateRegistry } from './core.ts';
 import { doctor, LoginRequired } from './doctor.ts';
 import { Publisher } from './github.ts';
+import type { NativeRouting } from './routing.ts';
 import { MacDriver } from './harness.ts';
 import { command, freshRoot, interruption, interruptCommands, save, session } from './io.ts';
 import { publishable, Refused, verify } from './verify.ts';
 type Options = { mode: 'doctor'; output: string; pr: number; selfTest: boolean; candidate: boolean }
-  | { mode: 'run'; output: string; pr: number; selfTest: boolean; routes: string[]; features: string[]; wide?: string };
+  | { mode: 'run'; output: string; pr: number; selfTest: boolean; routes: string[]; features: string[]; wide?: string; routing?: NativeRouting };
 export function parse(args: string[]): Options {
   const mode = args[0];
   if (mode !== 'doctor' && mode !== 'run') throw new Error('Usage: verify.sh doctor [--candidate] --output /fresh/path | run --pr NUMBER --feature HARNESS:FEATURE... [--self-test] [--runner-route PROVIDER:MODEL@EFFORT]... [--wide REASON] --output /fresh/path');
+  let router = ''; const models: NativeRouting['models'] = {};
   let output = '', pr = 0, selfTest = false, candidate = false, wide: string | undefined;
   const seen = new Set<string>(), routes: string[] = [], features: string[] = [];
   for (let i = 1; i < args.length; i++) {
     const arg = args[i]!;
-    if (arg !== '--runner-route' && arg !== '--feature') { if (seen.has(arg)) throw new Error(`Duplicate option: ${arg}`); seen.add(arg); }
+    if (arg !== '--runner-route' && arg !== '--feature' && arg !== '--native-model') { if (seen.has(arg)) throw new Error(`Duplicate option: ${arg}`); seen.add(arg); }
     if (arg === '--self-test' && mode === 'run') selfTest = true;
     else if (arg === '--candidate' && mode === 'doctor') candidate = true;
-    else if (arg === '--output' || mode === 'run' && (arg === '--pr' || arg === '--runner-route' || arg === '--feature' || arg === '--wide')) {
+    else if (arg === '--output' || mode === 'run' && (arg === '--account-router' || arg === '--native-model' || arg === '--pr' || arg === '--runner-route' || arg === '--feature' || arg === '--wide')) {
       const value = args[++i]; if (!value || value.startsWith('--')) throw new Error(`Missing value: ${arg}`);
       if (arg === '--output') output = value;
-      else if (arg === '--runner-route') {
+      else if (arg === '--account-router') {
+        if (!value.startsWith('/')) throw new Error('Account router must be an absolute path');
+        router = value;
+      } else if (arg === '--native-model') {
+        const match = /^(claude|codex):([A-Za-z0-9._-]+)@(low|medium|high|xhigh|max)$/.exec(value);
+        if (!match || models[match[1] as 'claude' | 'codex']) throw new Error('Native model must be a distinct HARNESS:MODEL@EFFORT');
+        models[match[1] as 'claude' | 'codex'] = { model: match[2]!, effort: match[3]! };
+      } else if (arg === '--runner-route') {
         if (!ROUTE.test(value) || routes.includes(value)) throw new Error('Runner route must be a distinct PROVIDER:MODEL@EFFORT');
         routes.push(value);
       } else if (arg === '--feature') {
@@ -35,7 +44,8 @@ export function parse(args: string[]): Options {
     } else throw new Error(`Unknown option: ${arg}`);
   }
   if (!output || mode === 'run' && !pr) throw new Error('Output and (for run) PR are required');
-  if (mode === 'run') return { mode, output, pr, selfTest, routes, features, ...(wide ? { wide } : {}) };
+  if (!!router !== !!Object.keys(models).length) throw new Error('Account router and native models are required together');
+  if (mode === 'run') return { ...(router ? { routing: { router, models } } : {}), mode, output, pr, selfTest, routes, features, ...(wide ? { wide } : {}) };
   return { mode, output, pr, selfTest, candidate };
 }
 async function main(): Promise<void> {
@@ -56,7 +66,7 @@ async function main(): Promise<void> {
     else {
       const publisherRevision = (await command(['git', 'rev-parse', 'HEAD'], { cwd: repository })).trim();
       const registry = validateRegistry(JSON.parse(await readFile(join(import.meta.dir, '../features/registry.json'), 'utf8')));
-      const receipt = await verify({ pr: options.pr, selfTest: options.selfTest, features: options.features, routes: options.routes, wide: options.wide, root, registry, github: new Publisher(), driver: new MacDriver(command, session, options.routes), persist: r => save(join(root!, 'receipt.json'), r), publisherRevision });
+      const receipt = await verify({ pr: options.pr, selfTest: options.selfTest, features: options.features, routes: options.routes, wide: options.wide, root, registry, github: new Publisher(), driver: new MacDriver(command, session, options.routes, options.routing), persist: r => save(join(root!, 'receipt.json'), r), publisherRevision });
       console.log(`Pinned ${receipt.sha}: live-gate=${receipt.status}; evidence ${receipt.commentUrl}`);
     }
     interruption.signal.throwIfAborted();

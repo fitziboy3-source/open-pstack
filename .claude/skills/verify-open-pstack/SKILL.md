@@ -103,3 +103,11 @@ Read receipts as data, never shell input. Do not put credentials in prompts or p
 - scripts/verify.sh
 - scripts/verify.test.ts
 - scripts/verify.ts
+
+## Subscription account routing
+
+When the operator uses the harness account router, pass `--account-router /absolute/path/to/account-router` and one explicit `--native-model HARNESS:MODEL@EFFORT` for each selected harness. On Adam's model sheet these are `claude:opus@high` and `codex:gpt-6-astra@xhigh`. The router must have its matching `pstack-verify-run` launcher installed beside it. Missing support stops the run; never retry native sessions outside the router.
+
+The launcher receives one private request per native case, chooses the account through the router, validates the final isolated configuration against that admitted subscription, and links Codex authentication only for the admitted session. Plugin installation needs no authentication. Each case retains its account and terminal receipts privately; publication contains only their hashes. A failed or uncertain session retains candidate state for inspection. Cancellation asks the router to stop its child and write terminal evidence.
+
+This route supports ordinary single-session recipes with fixed native permissions. Setup, external runner exercises, and agent preload fail before the first session; they need a separate admitted contract. The poteto-mode invocation exercise resolves a supplied model sheet without dispatch. Formal creation and maintenance use the bounded capacity fixture described in `features/skill-invocation.md`.

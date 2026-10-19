@@ -5,6 +5,7 @@ import { requiredFeatures, requiredHarnesses } from './core.ts';
 import { command, isolatedEnv, retainedFile, save, session, treeHash, type Command, type Session } from './io.ts';
 import { doctor } from './doctor.ts';
 import { assertCodexAuth, linkCodexAuth, removeCodexHome, restoreSetup, snapshotSetup, type SetupSnapshot } from './isolation.ts';
+import { routedSession, type NativeRouting } from './routing.ts';
 import { sourceDigest, sourceHash } from './provenance.ts';
 import { publishable } from './verify.ts';
 import { REPO, type Driver, type Harness, type Installation, type Observation, type Receipt, type SessionRecord } from './types.ts';
@@ -80,11 +81,13 @@ export class MacDriver implements Driver {
   private codexHomes: string[] = [];
   private setup?: SetupSnapshot;
   private restorationFailed = false;
-  constructor(private run: Command = command, private record: Session = session, private routes: string[] = []) {}
+  private routedIncomplete = false;
+  constructor(private run: Command = command, private record: Session = session, private routes: string[] = [], private routing?: NativeRouting) {}
   async cleanup(): Promise<void> {
     if (this.setup) await restoreSetup(this.setup);
     if (this.restorationFailed) throw new Error('Setup restoration failed; publication forbidden');
-    for (const home of this.codexHomes) await removeCodexHome(home);
+    if (this.routedIncomplete) throw new Error('Routed session did not confirm successful cleanup; candidate state retained');
+    for (const home of this.codexHomes) await removeCodexHome(home, !!this.routing);
     this.codexHomes = [];
   }
   private candidate(home: string): Command {
@@ -118,7 +121,7 @@ export class MacDriver implements Driver {
       const candidate = join(workspace, 'plugins/pstack'), expected = await treeHash(candidate, ['skills/poteto-mode/scripts/node_modules']);
       if (await sourceDigest(workspace) !== pinnedSource) throw new Error('Candidate files differ from trusted pinned source');
       let location = candidate;
-      await linkCodexAuth(home);
+      if (!this.routing) await linkCodexAuth(home);
       this.codexHomes.push(home);
       if (harness === 'codex') {
         const added = await candidateRun(['codex', 'plugin', 'marketplace', 'add', workspace, '--json'], { env, cwd: home });
@@ -153,6 +156,14 @@ export class MacDriver implements Driver {
       // Setup rewrites the harness's model sheet, so it runs last and later checks see the default configuration.
       features: requiredFeatures(receipt, installation.harness).sort((a, b) => Number(setupFeature(a)) - Number(setupFeature(b)))
         .map(feature => ({ feature, cases: recipe(feature, installation.harness, this.routes) })) }));
+    if (this.routing) {
+      for (const { installation, features } of plans) {
+        if (!this.routing.models[installation.harness]) throw new Error(`native-model-missing:${installation.harness}`);
+        for (const { feature, cases } of features) {
+          if (feature === 'runner' || setupFeature(feature) || feature.startsWith('agent-preload:') || cases.some(c => c.codexSandbox || c.claudePermission)) throw new Error(`unsupported-routed-recipe:${feature}`);
+        }
+      }
+    }
     const observations: Observation[] = [];
     for (const { installation, features } of plans) {
       const { harness, home } = installation, workspace = join(home, 'workspace');
@@ -170,7 +181,12 @@ export class MacDriver implements Driver {
             await c.prepare?.(fixture);
             const stdout = join(records, `${c.id}.jsonl`), stderr = join(records, `${c.id}.stderr`), cwd = c.cwd === 'workspace' ? workspace : dir;
             const started = Date.now();
-            const exitCode = await this.record(launch(harness, workspace, { cwd, addDirs: cwd === dir ? [] : [dir], codexSandbox: c.codexSandbox, claudePermission: c.claudePermission }),
+            if (this.routing) this.routedIncomplete = true;
+            const routed = this.routing ? await routedSession(this.routing, this.record, {
+              harness, home, workspace, cwd, sha: receipt.sha, prompt: c.prompt(fixture), stdout, stderr,
+            }) : undefined;
+            if (routed) { this.routedIncomplete = false; evidence.push(...routed.evidence); }
+            const exitCode = routed?.exitCode ?? await this.record(launch(harness, workspace, { cwd, addDirs: cwd === dir ? [] : [dir], codexSandbox: c.codexSandbox, claudePermission: c.claudePermission }),
               { cwd, env, input: sessionInput(harness, c.prompt(fixture)), stdout, stderr });
             evidence.push(stdout, ...(await stat(stderr)).size ? [stderr] : []);
             let record: SessionRecord, result;
@@ -201,7 +217,7 @@ export class MacDriver implements Driver {
           observed: publishable(passed) ? passed : `passed ${assertions.length} assertions; ids retained privately`,
           transcript: transcript!.path, transcriptHash: transcript!.sha256, artifacts });
       }
-      if (harness === 'codex') await assertCodexAuth(home);
+      if (harness === 'codex' && !this.routing) await assertCodexAuth(home);
       if (await treeHash(installation.location, ['skills/poteto-mode/scripts/node_modules']) !== installation.treeHash) throw new Error('Installed tree changed during exercise');
       if (await sourceDigest(workspace) !== installation.sourceHash) throw new Error('Pinned project/plugin source changed during exercise');
     }

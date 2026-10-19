@@ -12,10 +12,13 @@ export function interruptCommands(signal: 'SIGINT' | 'SIGTERM'): Promise<void> {
   interrupting = (async () => {
     const children = [...activeCommands];
     for (const [pid] of children) {
-      try { process.kill(-pid, 'SIGKILL'); }
+      try { process.kill(-pid, 'SIGTERM'); }
       catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ESRCH') throw error; }
     }
-    await Promise.all(children.map(([, exited]) => exited));
+    await Promise.all(children.map(async ([pid, exited]) => {
+      const timer = setTimeout(() => { try { process.kill(-pid, 'SIGKILL'); } catch {} }, 15000);
+      try { await exited; } finally { clearTimeout(timer); }
+    }));
   })();
   return interrupting;
 }

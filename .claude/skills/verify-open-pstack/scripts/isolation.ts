@@ -32,8 +32,10 @@ export async function assertCodexAuth(home: string): Promise<void> {
   }
 }
 
-export async function removeCodexHome(home: string): Promise<void> {
-  await assertCodexAuth(home);
+export async function removeCodexHome(home: string, routed = false): Promise<void> {
+  if (routed) {
+    if (await lstat(join(await codexDirectory(home), 'auth.json')).catch(() => undefined)) throw new Error('Routed authentication remains; retain candidate state for inspection');
+  } else await assertCodexAuth(home);
   await rm(await codexDirectory(home), { recursive: true });
 }
 
