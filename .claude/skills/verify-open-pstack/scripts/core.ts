@@ -57,6 +57,9 @@ export function classify(files: ChangedFile[], registry: Registry): Selection {
       if (leaf === 'SKILL.md' || leaf.startsWith('references/') || leaf.startsWith('playbooks/')) {
         skills.add(skill[1]!); covered = true;
       }
+      if (leaf === 'agents/openai.yaml') {
+        features.add(`codex:skill-invocation:${skill[1]}`); covered = true;
+      }
       // poteto-agent preloads poteto-mode's SKILL.md.
       if (skill[1] === 'poteto-mode' && leaf === 'SKILL.md') features.add('claude:agent-preload:poteto-agent');
     }

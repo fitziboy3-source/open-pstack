@@ -62,6 +62,12 @@ describe('registry and ownership', () => {
     expect(s.features).toContain('claude:agent-preload:poteto-agent');
     expect(s.features).not.toContain('codex:agent-preload:poteto-agent');
   });
+  test('Codex skill invocation policy reaches its native skill and rejects unknown metadata', () => {
+    const path = 'plugins/pstack/skills/create-formal-verification-skill/agents/openai.yaml';
+    expect(classify([{ filename: path }], registry).features).toEqual(['codex:skill-invocation:create-formal-verification-skill']);
+    expect(() => classify([{ filename: path.replace('openai.yaml', 'unknown.yaml') }], registry)).toThrow('Unmapped path');
+    expect(() => classify([{ filename: path.replace('create-formal-verification-skill', 'unregistered-skill') }], registry)).toThrow('Unmapped path');
+  });
   test('poteto-mode SKILL.md also reaches the Claude agent that preloads it', () => {
     const s = classify([{ filename: 'plugins/pstack/skills/poteto-mode/SKILL.md' }], registry);
     expect(s.features).toEqual([...both('skill-invocation:poteto-mode'), 'claude:agent-preload:poteto-agent'].sort());

@@ -31,6 +31,8 @@ jobs:
           Copy-Item (Join-Path $env:SystemRoot 'System32\hostname.exe') (Join-Path $cwd 'cmd.exe')
           $expected = (Get-Content -Raw "$root\hooks\session-start-context.md").Replace("`r`n", "`n").TrimEnd()
           $hook = (Get-Content -Raw plugins/pstack/hooks/hooks.json | ConvertFrom-Json).hooks.SessionStart[0].hooks[0].commandWindows
+          $flag = Join-Path $env:RUNNER_TEMP 'pstack-front-door.on'
+          $env:PSTACK_FRONT_DOOR_FLAG = $flag.Replace('\', '/')
           # Codex runs a hook through the session's shell (codex-rs/hooks/src/engine/command_runner.rs,
           # build_command): PowerShell gets `-NoProfile -Command <command>` as an argument, and cmd, or
           # %COMSPEC% with no session shell, gets `/c "<command>"` unescaped.
@@ -57,6 +59,11 @@ jobs:
             Write-Host "$(if ($Ok) { 'PASS' } else { 'FAIL' }): $Name"
             if (-not $Ok) { $script:failed++ }
           }
+          foreach ($shell in $shells.Keys) {
+            $result = Invoke-Hook $shell $hook $env:PATH
+            Check "$shell, absent front-door flag" ($result.Code -eq 0 -and $result.Out -eq '')
+          }
+          New-Item -ItemType File -Path $flag | Out-Null
           foreach ($shell in $shells.Keys) {
             foreach ($case in @(@{ Name = 'ordinary PATH'; Path = $env:PATH }, @{ Name = 'System32-only PATH'; Path = $system32 })) {
               $result = Invoke-Hook $shell $hook $case.Path
