@@ -48,7 +48,7 @@ async function commit(f:Fixture, message:string, paths:string[]):Promise<string>
 }
 function request(f:Fixture, skill:string, task:string):string {
   const invoke=f.harness==='claude'?`/pstack:${skill}`:`$pstack:${skill}`;
-  return `${invoke} ${task} Work only in ${f.dir}. This is one local verification exercise. Do not launch other model sessions or subagents, contact GitHub, or change product code. Write your report to result.md and complete all work before your final reply.`;
+  return `${invoke} ${task} Work only in ${f.dir}. This is one local verification exercise. Do not launch other model sessions or subagents, contact GitHub, or change product code. Use native ${f.harness==='claude'?'Write/Edit':'file-editing tools'} to create or update the project SKILL.md; if permission is denied, report the denial and stop that edit. Write your report to result.md and complete all work before your final reply.`;
 }
 function loaded(record:SessionRecord,skill:string):void {
   if(!record.skills.includes(`pstack:${skill}`)) throw new Error(`skill-not-loaded:${skill}`);
