@@ -49,3 +49,13 @@ Routines and `claude --cloud` use the same environments, so they need no extra s
 - **Secrets:** none. The fork is public, and anyone who can use an environment can read its setup script.
 - **Test:** `bash tests/cloud-setup-test.sh`.
 - **Codex cloud:** no step yet. OpenAI's docs say a cloud task loads skills stored in the repository and does not sync personal skills. They do not say whether an environment's install script can place skills in `$HOME/.agents/skills`. That needs a probe in a real Codex cloud task.
+
+## October 19, 2026 update
+
+This candidate uses released Open Pstack 1.15.0 at `39cb5e4a4d3c03e432a0dc840bcfdae0856166ac` and the shared skill changes from Cursor pstack 0.15.28 at `d457567332aa6989e753ea289f30ea2bfbc80bc0`. It is versioned `1.15.0-adam.20261019` to distinguish the fork from the released port.
+
+The import adds create-formal-verification-skill and maintain-formal-verification-skill, updates their help and setup entry points, and includes the ketchup, sharpen and TypeScript changes since 0.15.25. Both new skills remain explicit-only in Claude and Codex. The setup offer follows the port's existing model probes and behavioral smoke; the port's installation instructions and provider mapping remain. The Cursor-only make-bot-ui, plugin manifests and guide are not installed. The router's name correction is already present in the port.
+
+The original formal skill bodies are retained byte for byte. Their verification scope, mutation checks, reporting duties and prohibition on product edits remain intact. The shared model sheet, front-door flag, gated session hook and cloud installer are retained.
+
+The repository-local verifier publishes only to this fork. Its feature map includes both formal skills and their Codex invocation policies. The Windows hook check first verifies silence without the fork's flag, then creates a run-owned flag before exercising the enabled hook. It never changes the operator's flag.

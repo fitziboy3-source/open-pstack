@@ -73,7 +73,24 @@ test('credential-directory and account options are removed', () => {
 test('runner routes are explicit, repeatable, and distinct', () => {
   expect(parse(['run', '--pr', '1', '--runner-route', 'codex:gpt-6.1-sol@max', '--runner-route', 'codex:gpt-6.1-sol@ultra', '--output', '/fresh/run']))
     .toMatchObject({ routes: ['codex:gpt-6.1-sol@max', 'codex:gpt-6.1-sol@ultra'] });
-  for (const args of [['--runner-route', 'gpt-6.1-sol'], ['--runner-route', 'codex:a@max', '--runner-route', 'codex:a@max']]) {
+  // Any provider spelling parses; the installed catalog decides whether it exists before a session starts.
+  expect(parse(['run', '--pr', '1', '--runner-route', 'devin:swe-2@max', '--runner-route', 'devin:swe-1.6@default', '--output', '/fresh/run']))
+    .toMatchObject({ routes: ['devin:swe-2@max', 'devin:swe-1.6@default'] });
+  // A model may hold a slash, as OpenCode's provider-qualified models do.
+  expect(parse(['run', '--pr', '1', '--runner-route', 'opencode:opencode/deepseek-v4.1-flash-free@max', '--output', '/fresh/run']))
+    .toMatchObject({ routes: ['opencode:opencode/deepseek-v4.1-flash-free@max'] });
+  for (const args of [['--runner-route', 'gpt-6.1-sol'], ['--runner-route', 'codex:a@max', '--runner-route', 'codex:a@max'], ['--runner-route', 'Devin:swe-2@max']]) {
     expect(() => parse(['run', '--pr', '1', '--output', '/fresh/run', ...args])).toThrow();
   }
+});
+test('--wide takes one publishable, nonblank reason and only for run', () => {
+  const run = ['run', '--pr', '1', '--output', '/fresh/run'];
+  expect(parse([...run, '--wide', 'Shared references changed every skill'])).toMatchObject({ wide: 'Shared references changed every skill' });
+  expect(parse(run)).not.toHaveProperty('wide');
+  for (const reason of ['   ', 'uses `backticks`', 'has <angle> brackets', 'non-ASCII — dash', 'r'.repeat(161)]) {
+    expect(() => parse([...run, '--wide', reason])).toThrow('Wide reason must be nonblank printable ASCII');
+  }
+  expect(() => parse([...run, '--wide', 'one', '--wide', 'two'])).toThrow('Duplicate option: --wide');
+  expect(() => parse([...run, '--wide'])).toThrow('Missing value: --wide');
+  expect(() => parse(['doctor', '--output', '/fresh/probe', '--wide', 'reason'])).toThrow('Unknown option: --wide');
 });

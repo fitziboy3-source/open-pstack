@@ -25,7 +25,11 @@ EVIDENCE="$SESSION/live" # must not exist yet
 .claude/skills/verify-open-pstack/scripts/verify.sh run --pr "$PR" --feature claude:project-skill --self-test --output "$EVIDENCE"
 ```
 
-Pick the features that exercise the PR's changed behavior and pass each as `--feature <harness>:<feature>`, repeatable. List the same features in the PR body, where review sees them. A runtime change needs at least one `--feature`; the run fails before any install without one. The run exercises only the named features, plus `project-skill` in both harnesses under `--self-test`. It never falls back to the classified set, and a full sweep is never the default.
+Pick the features that exercise the PR's changed behavior and pass each as `--feature <harness>:<feature>`, repeatable. List the same features in the PR body, where review sees them. The run exercises only the named features, plus `project-skill` in both harnesses when classification reaches it or under `--self-test`. Before any install or GitHub write, `verify.sh run` makes three checks:
+
+- Scope: a runtime change needs at least one `--feature`, and every named feature must be in the PR's classified reach. The refusal names each refused feature and the reachable set. A manifest change that only bumps the version reaches only `hook:startup` in that manifest's harness.
+- Count: the run prints the number of headless sessions the named features and automatic `project-skill` checks will start.
+- Limit: above 12 sessions, the run refuses unless you pass `--wide "<reason>"`. The reason must be printable ASCII, at most 160 characters, without backticks or angle brackets. The evidence comment records the planned count and the reason.
 
 Reuse the Claude Code and Codex logins you already have; no extra login or credential source flags. Omit `--self-test` for ordinary plugin verification; it is mandatory for this skill's delivery. An agent runs and judges the whole gate from a non-TTY shell; nothing prompts a person. `--runner-route PROVIDER:MODEL@EFFORT`, repeatable, replaces the runner recipe's default route, a role default from the installed candidate's model catalog, for each parent whose provider differs from the route's.
 
@@ -41,7 +45,7 @@ Temporary, GitHub, and fixture state remain run-owned; Git configuration is disa
 
 ## Drive
 
-Read `features/README.md` and the document for every named feature. Path classification still runs: it decides whether the PR has a runtime change, and an unmapped path fails closed. It does not choose the features; the agent does. `no runtime change` launches no harness unless `--self-test` is requested.
+Read `features/README.md` and the document for every named feature. Path classification computes the features the PR can reach, and an unmapped path fails closed. It does not choose the features; the agent does. `no runtime change` launches no harness unless `--self-test` is requested.
 
 Create detached exact-head candidate checkouts and run-owned temporary/fixture state, only for harnesses with a named feature. Every named feature resolves to a recipe in `features/recipes.ts` before the first session starts: one or more cases, each with a fixture, a prompt, and an assertion the trusted parent evaluates. A feature without a recipe fails as `missing-recipe:<harness>/<feature>`; `assets:codex` fails as `unsupported-native-consumer` until it has a recipe. Each case runs as one fresh headless session, sequentially, and setup never runs alongside anything.
 
@@ -71,10 +75,10 @@ Each headless session exits on its own. Verify any setup restoration before publ
 
 - `scripts/verify.sh doctor --output <fresh-absolute-external-directory>`: parent capability and login-state report, no installation/publication.
 - `scripts/verify.sh doctor --candidate --output <fresh-run-owned-directory>`: candidate-safe self-test probe; no publisher authentication probing.
-- `scripts/verify.sh run --pr <positive-number> --feature <harness>:<feature>... [--self-test] [--runner-route PROVIDER:MODEL@EFFORT]... --output <fresh-absolute-external-directory>`: headless exact-head verification of the named features with machine-checked recipes; no terminal or prompts. The evidence comment lists only the features that ran.
+- `scripts/verify.sh run --pr <positive-number> --feature <harness>:<feature>... [--self-test] [--runner-route PROVIDER:MODEL@EFFORT]... [--wide <reason>] --output <fresh-absolute-external-directory>`: headless exact-head verification of the named features with machine-checked recipes; no terminal or prompts. The evidence comment lists only the features that ran.
 - `features/recipes.ts`: per-feature headless cases and assertions.
 - `bun run test` and `bun run typecheck`: development checks after a separate frozen dependency install, not live proof.
-- `features/registry.json`: maintained path ownership; it decides runtime versus no runtime change, and unknown runtime paths block.
+- `features/registry.json`: maintained path ownership; it decides which features a PR can reach, and unknown runtime paths block.
 
 Read receipts as data, never shell input. Do not put credentials in prompts or public artifacts.
 
@@ -99,3 +103,13 @@ Read receipts as data, never shell input. Do not put credentials in prompts or p
 - scripts/verify.sh
 - scripts/verify.test.ts
 - scripts/verify.ts
+
+## Subscription account routing
+
+When the operator uses the harness account router, pass `--account-router /absolute/path/to/account-router` and one explicit `--native-model HARNESS:MODEL@EFFORT` for each selected harness. On Adam's model sheet these are `claude:opus@high` and `codex:gpt-6-astra@xhigh`. The router must have its matching `pstack-verify-run` launcher installed beside it. Missing support stops the run; never retry native sessions outside the router.
+
+The launcher receives one private request per native case, chooses the account through the router, validates the final isolated configuration against that admitted subscription, and links Codex authentication only for the admitted session. Plugin installation needs no authentication. Each case retains its account and terminal receipts privately; publication contains only their hashes. A failed or uncertain session retains candidate state for inspection. Cancellation asks the router to stop its child and write terminal evidence.
+
+This route supports ordinary single-session recipes with fixed native permissions. Setup, external runner exercises, and agent preload fail before the first session; they need a separate admitted contract. The poteto-mode invocation exercise resolves a supplied model sheet without dispatch. Formal creation and maintenance use the bounded capacity fixture described in `features/skill-invocation.md`.
+
+Routed Claude sessions use the launcher's native permission channel for Write/Edit of the formal fixtures' `.claude/skills/verify-capacity/SKILL.md`. The operator must approve that scoped policy before enabling it. Other permission requests are denied and decisions stay in the private terminal receipt. Use native file tools for that skill; a denied edit fails the case. The maintenance assertion still requires the actual skill's sync commit to advance.
