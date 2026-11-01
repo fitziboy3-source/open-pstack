@@ -4,6 +4,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { parse } from './cli.ts';
 import { routedSession } from './routing.ts';
+import { unroutable } from './harness.ts';
+import { createFormal, maintainFormal } from '../features/formal.ts';
 import type { Session } from './io.ts';
 const roots:string[]=[];
 afterEach(async()=>{for(const root of roots.splice(0)) await rm(root,{recursive:true,force:true});});
@@ -29,4 +31,12 @@ test('native proof rejects an incomplete admission receipt',async()=>{
     const proof=routedSession({router:'/trusted/account-router',models:{codex:{model:'gpt-6-astra',effort:'xhigh'}}},run,{harness:'codex',home:root,workspace:root,cwd:root,sha:'a'.repeat(40),prompt:'fixture prompt',stdout,stderr:`${stdout}.err`});
     if(terminal) expect((await proof).evidence).toHaveLength(3);else await expect(proof).rejects.toThrow('not-successfully-completed');
   }
+});
+test('routed eligibility follows the selected harness',()=>{
+  const formal=[createFormal(),maintainFormal()];
+  expect(unroutable('skill-invocation:create-formal-verification-skill','claude',formal)).toBe(true);
+  expect(unroutable('skill-invocation:create-formal-verification-skill','codex',formal)).toBe(false);
+  expect(unroutable('skill-invocation:maintain-formal-verification-skill','codex',formal)).toBe(false);
+  expect(unroutable('skill-invocation:poteto-mode','claude',[])).toBe(false);
+  expect(unroutable('setup','codex',[])).toBe(true);
 });
