@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from "bun:test";
+import { createHash } from "node:crypto";
 import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
@@ -20,6 +21,7 @@ import {
   WRITE_COMMAND,
   writeGenerated,
 } from "./registry/render.ts";
+import { type Access, access } from "./registry/contract.ts";
 import { EFFORTS } from "./types.ts";
 
 const RUNNER = import.meta.dir;
@@ -46,7 +48,14 @@ function familyOf(provider: string, model: string): string | null {
   return match.kind === "unregistered" ? null : match.family.name;
 }
 
+const RELEASED_BY_1_15_0 = { count: 20, sha256: "d8308fb54209a852f3be8a44a9057153776036bf72eb55142c9e5faefcca49f8" };
+
 describe("registry data", () => {
+  it("keeps every pair released by 1.15.0 in place", () => {
+    const released = REGISTRY.releasedPairs.slice(0, RELEASED_BY_1_15_0.count);
+    expect(createHash("sha256").update(JSON.stringify(released)).digest("hex")).toBe(RELEASED_BY_1_15_0.sha256);
+  });
+
   it("resolves every released pair to its recorded family", () => {
     for (const { pair, family } of REGISTRY.releasedPairs) {
       const at = pair.indexOf(":");
@@ -65,14 +74,12 @@ describe("registry data", () => {
     }
   });
 
-  // UPSTREAM.md records these as port choices that upstream syncs do not apply.
   it("keeps the solo code roles on Sol and every panel on Opus, Sol and Grok", () => {
     const lanes = (role: string) => REGISTRY.roleDefaults.find((entry) => entry.role === role)?.lanes;
     for (const role of ["bug-fix", "perf-issue", "hillclimb"]) expect([role, lanes(role)]).toEqual([role, ["sol"]]);
     for (const role of ["arena runners", "arena cross-judge pool", "architect runners", "interrogate reviewers"]) {
       expect([role, lanes(role)]).toEqual([role, ["opus", "sol", "grok"]]);
     }
-    // External lanes lack the parent's MCP surface (provider-dispatch.md), so Why and Reflect stay on the parent.
     for (const role of ["why investigators, synthesizer", "reflect tooling, judgment, divergent, synthesizer"]) {
       expect([role, lanes(role)]).toEqual([role, ["inherit-parent"]]);
     }
@@ -87,6 +94,7 @@ describe("registry data", () => {
       ["luna", "max"],
       ["sonnet", "max"],
       ["opus-5-5", "max"],
+      ["haiku-5-5", "max"],
       ["swe-2", "max"],
       ["swe-1.6", "default"],
       ["deepseek-v4.1-flash-free", "max"],
@@ -98,7 +106,7 @@ describe("registry data", () => {
       ["gemini-3.7-flash", "high"],
     ]);
     expect(REGISTRY.families.filter((entry) => entry.provider === "claude").map((entry) => [entry.name, entry.model]))
-      .toEqual([["fable", "fable"], ["opus", "opus"], ["sonnet", "sonnet"], ["opus-5-5", "claude-opus-5-5"]]);
+      .toEqual([["fable", "fable"], ["opus", "opus"], ["sonnet", "sonnet"], ["opus-5-5", "claude-opus-5-5"], ["haiku-5-5", "claude-haiku-5-5"]]);
     expect(REGISTRY.families.filter((entry) => entry.rolling !== undefined)
       .map((entry) => [entry.name, entry.rolling!.revisionPrefix]))
       .toEqual([["fable", "claude-fable-"], ["opus", "claude-opus-"], ["sonnet", "claude-sonnet-"]]);
@@ -276,8 +284,6 @@ describe("hand-written dispatch and setup rules", () => {
     expect(new Set(writers)).toEqual(new Set(["feature, refactoring", "bug-fix", "perf-issue", "hillclimb"]));
     const rule = section(setup, "### 3. Parse per-family efforts", "### 4. Collect one requested effort per family");
     expect(rule).toContain("Lanes for these roles write files: `feature, refactoring`, `bug-fix`, `perf-issue`, and `hillclimb`, whose playbooks delegate with `isolated-write`; `hardest tasks`, which takes the hardest code changes; and `arena runners`, `architect runners` and `swarm workers`, which write to their own worktrees or output directories.");
-    // poteto-mode sends the hardest changes to `hardest tasks`; arena and architect candidates and swarm workers each write
-    // to their own location.
     expect(readFileSync(join(PLUGIN_ROOT, "skills/poteto-mode/SKILL.md"), "utf8")).toContain("the hardest changes read `hardest tasks`");
     expect(readFileSync(join(PLUGIN_ROOT, "skills/arena/SKILL.md"), "utf8")).toContain("Give each candidate its own output location (a git worktree");
     expect(readFileSync(join(PLUGIN_ROOT, "skills/swarm/SKILL.md"), "utf8")).toContain("in the worker's own worktree");
@@ -320,7 +326,6 @@ describe("hand-written dispatch and setup rules", () => {
 
 const REPO_ROOT = join(PLUGIN_ROOT, "../..");
 const ROLE_DEFAULTS = "model-catalog.md#role-defaults";
-/** Cursor-derived and port files that point at role defaults, and the roles each names. */
 const ROLE_POINTERS: Record<string, readonly string[]> = {
   "skills/arena/SKILL.md": ["arena runners", "arena cross-judge pool"],
   "skills/architect/SKILL.md": ["architect runners"],
@@ -437,6 +442,17 @@ describe("resolveLane", () => {
     expect(lane.adapter.launch.argv(lane, { sharedGitDir: null, providerSidecar: null })).toEqual(expect.arrayContaining(["claude-opus-5-5"]));
   });
 
+  it("resolves the registered Haiku 5.5 model for external Claude lanes", () => {
+    const match = resolveModel("claude", "claude-haiku-5-5");
+    expect([match.kind, match.kind === "current" ? match.family.name : null])
+      .toEqual(["current", "haiku-5-5"]);
+    const lane = resolveLane(request({ model: "claude-haiku-5-5" }));
+    expect([lane.family?.name, lane.model, lane.cliModel, lane.effort])
+      .toEqual(["haiku-5-5", "claude-haiku-5-5", "claude-haiku-5-5", "max"]);
+    expect(lane.adapter.launch.argv(lane, { sharedGitDir: null, providerSidecar: null }))
+      .toEqual(expect.arrayContaining(["--model", "claude-haiku-5-5", "--effort", "max"]));
+  });
+
   it("resolves Sonnet and Luna, and rejects ultra for both", () => {
     expect(resolveLane(request({ model: "sonnet", effort: "low" })).family?.name).toBe("sonnet");
     const luna = resolveLane(request({ parent: "claude", provider: "codex", model: "gpt-6-luna" }));
@@ -458,7 +474,6 @@ describe("resolveLane", () => {
       expect([lane.family?.name, lane.model, lane.cliModel]).toEqual([model, model, cliModel]);
     }
     expect(() => devin("swe-2", "default")).toThrow("effort default is not offered for devin:swe-2; choose one of: medium, high, max");
-    // An unregistered Devin model is already a CLI model ID, so only the default effort runs it.
     expect([devin("swe-1-7-medium", "default").cliModel, devin("swe-1-7-medium", "default").family]).toEqual(["swe-1-7-medium", null]);
     expect(() => devin("swe-1-7-medium", "max")).toThrow("effort max is not offered for devin:swe-1-7-medium; choose one of: default");
     expect(() => devin("swe-2", "max", "isolated-write"))
@@ -468,15 +483,28 @@ describe("resolveLane", () => {
     }
   });
 
+  it("types only access() results as Access", () => {
+    type Extends<A, B> = [A] extends [B] ? true : false;
+    const bareReader: Extends<{ readonly mode: "read-only" }, Access> = false;
+    const bareWriter: Extends<{ readonly mode: "isolated-write"; readonly sandbox: "bounded" }, Access> = false;
+    const reader = access("read-only");
+    const writer = access("isolated-write", "full-access");
+    const builtReader: Extends<typeof reader, Access> = true;
+    const builtWriter: Extends<typeof writer, Access> = true;
+    expect([bareReader, bareWriter, builtReader, builtWriter]).toEqual([false, false, true, true]);
+    expect<object>(reader).toEqual({ mode: "read-only" });
+    expect<object>(writer).toEqual({ mode: "isolated-write", sandbox: "full-access" });
+  });
+
   it("builds a bounded writer unless full access is requested, and refuses full access off a Codex writer", () => {
     const codex = (overrides: Partial<LaneRequest>) =>
       resolveLane(request({ parent: "claude", provider: "codex", model: "gpt-6.1-sol", ...overrides }));
-    expect(codex({}).access).toEqual({ mode: "read-only" });
-    expect(codex({ writerSandbox: "bounded" }).access).toEqual({ mode: "read-only" });
-    expect(codex({ mode: "isolated-write" }).access).toEqual({ mode: "isolated-write", sandbox: "bounded" });
-    expect(codex({ mode: "isolated-write", writerSandbox: "bounded" }).access).toEqual({ mode: "isolated-write", sandbox: "bounded" });
+    expect(codex({}).access).toEqual(access("read-only"));
+    expect(codex({ writerSandbox: "bounded" }).access).toEqual(access("read-only"));
+    expect(codex({ mode: "isolated-write" }).access).toEqual(access("isolated-write"));
+    expect(codex({ mode: "isolated-write", writerSandbox: "bounded" }).access).toEqual(access("isolated-write"));
     expect(codex({ mode: "isolated-write", writerSandbox: "full-access" }).access)
-      .toEqual({ mode: "isolated-write", sandbox: "full-access" });
+      .toEqual(access("isolated-write", "full-access"));
     expect(() => codex({ writerSandbox: "full-access" })).toThrow("writer sandbox full-access requires mode isolated-write");
     expect(() => codex({ mode: "isolated-write", writerSandbox: "danger-full-access" }))
       .toThrow("writer-sandbox must be one of: bounded, full-access");

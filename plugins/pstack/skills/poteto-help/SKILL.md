@@ -36,7 +36,7 @@ When the model rule is missing and it matters, ask whether the user wants to pic
 ## Get set up
 
 1. Install. In Claude Code, run `/plugin marketplace add ericlitman/open-pstack`, then `/plugin install pstack@open-pstack`, then `/reload-plugins`. In Codex, run `codex plugin marketplace add ericlitman/open-pstack --ref main`, then `codex plugin add pstack@open-pstack`, and turn on `multi_agent` per [`codex-tools.md`](../poteto-mode/references/codex-tools.md).
-2. Run [`/setup-pstack`](../setup-pstack/SKILL.md). It maps a model to each role, asks one requested effort for each model family it assigns, probes those models, and writes a model sheet. The sheet applies to new sessions. Then it offers to generate a formal verification skill for the project, unless the project already has one.
+2. Run [`/setup-pstack`](../setup-pstack/SKILL.md). It maps a model to each role, asks one requested effort for each model family it assigns, probes those models, and writes a model sheet. A rerun that keeps a valid sheet and names no change asks none of these questions: it keeps the sheet's roles and efforts, probes them, and writes when every probe passes. The sheet applies to new sessions. Then it offers once each to generate a verification skill and a formal verification skill for the project, unless the project already has one. On a rerun that keeps the sheet, it mentions each offer in one line instead of asking.
 3. Start a real task with `/poteto-mode`, a goal, and a check that can pass or fail.
 
 In Claude Code, a typed skill carries the plugin prefix, as in `/pstack:poteto-mode`. In Codex, ask for a skill by name, as in "use pstack:poteto-mode". The [README](https://github.com/ericlitman/open-pstack#readme) and [guide page 1](https://github.com/cursor/plugins/blob/main/pstack/docs/guide/01-setup.md) have the details. Offer to word their first prompt with them, per [`references/prompting.md`](references/prompting.md).
@@ -65,7 +65,7 @@ The default answer is `/poteto-mode`, which runs most of the others when its ste
 |---|---|
 | Do any non-trivial task with rigor | [`/poteto-mode`](../poteto-mode/SKILL.md) |
 | Check that the agent understood their goal and the problem before it starts | [`/in-your-own-words`](../in-your-own-words/SKILL.md) |
-| Aim a task higher before starting: more expert, more outcome-focused, not overspecified | [`/sharpen`](../sharpen/SKILL.md) |
+| Get a prompt rewritten deeper, not bigger, before sending it: what a top professional would add, their raw material and methods, and an outside check. It returns the prompt and doesn't do the task | [`/sharpen`](../sharpen/SKILL.md) |
 | Know how code works now, or where new code should live | [`/how`](../how/SKILL.md) |
 | Know why code is shaped this way, or where a number came from | [`/why`](../why/SKILL.md) |
 | Understand a change or subsystem, explained plainly | [`/teach`](../teach/SKILL.md) |

@@ -32,7 +32,7 @@ export const FAMILIES = [
     efforts: UP_TO_MAX,
     defaultEffort: "xhigh",
     upstream: "grok-4.7-xhigh-fast",
-    predecessors: [{ model: "grok-4.6", efforts: UP_TO_MAX }], // written before v1.5.0
+    predecessors: [{ model: "grok-4.6", efforts: UP_TO_MAX }],
   }),
   family({
     name: "opus",
@@ -67,10 +67,19 @@ export const FAMILIES = [
     name: "opus-5-5",
     label: "Opus 5.5",
     provider: "claude",
-    model: "claude-opus-5-5", // an exact pin: resolveModel matches it before the opus revision pattern
+    model: "claude-opus-5-5",
     efforts: UP_TO_MAX,
     defaultEffort: "max",
     upstream: "claude-opus-5-5-xhigh",
+  }),
+  family({
+    name: "haiku-5-5",
+    label: "Haiku 5.5",
+    provider: "claude",
+    model: "claude-haiku-5-5",
+    efforts: UP_TO_MAX,
+    defaultEffort: "max",
+    upstream: null,
   }),
   family({
     name: "swe-2",
@@ -87,7 +96,7 @@ export const FAMILIES = [
     label: "SWE-1.6",
     provider: "devin",
     model: "swe-1.6",
-    efforts: { default: "swe-1-6" }, // the family's single variant
+    efforts: { default: "swe-1-6" },
     defaultEffort: "default",
     upstream: null,
   }),
@@ -178,7 +187,6 @@ export const ROLE_DEFAULTS = [
   { role: "interrogate reviewers", lanes: PANEL },
 ] as const satisfies readonly RoleDefault<FamilyName>[];
 
-/** Append-only. Every pair any model-matrix revision on main contained. */
 export const RELEASED_PAIRS = [
   { pair: "claude:claude-fable-5", family: "fable" },
   { pair: "claude:claude-opus-5", family: "opus" },
@@ -200,4 +208,5 @@ export const RELEASED_PAIRS = [
   { pair: "agy:gemini-3.8-flash", family: "gemini-3.8-flash" },
   { pair: "cursor:composer-2.5", family: "composer-2.5" },
   { pair: "cursor:gemini-3.7-flash", family: "gemini-3.7-flash" },
+  { pair: "claude:claude-haiku-5-5", family: "haiku-5-5" },
 ] as const satisfies readonly ReleasedPair<FamilyName>[];
