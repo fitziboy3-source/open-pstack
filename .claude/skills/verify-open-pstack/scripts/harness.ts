@@ -1,6 +1,6 @@
 import { copyFile, mkdir, readdir, readFile, realpath, stat } from 'node:fs/promises';
 import { basename, join } from 'node:path';
-import { CLAUDE_TOOLS, recipe, type Fixture } from '../features/recipes.ts';
+import { CLAUDE_TOOLS, recipe, type Case, type Fixture } from '../features/recipes.ts';
 import { requiredFeatures, requiredHarnesses } from './core.ts';
 import { command, isolatedEnv, retainedFile, save, session, treeHash, type Command, type Session } from './io.ts';
 import { doctor } from './doctor.ts';
@@ -11,6 +11,11 @@ import { publishable } from './verify.ts';
 import { REPO, type Driver, type Harness, type Installation, type Observation, type Receipt, type SessionRecord } from './types.ts';
 
 const setupFeature = (feature: string): boolean => feature === 'setup' || feature === 'skill-invocation:setup-pstack';
+/** The routed launcher fixes each harness's isolation, so only a case that needs its own harness's override cannot be routed. */
+export function unroutable(feature: string, harness: Harness, cases: Case[]): boolean {
+  return feature === 'runner' || setupFeature(feature) || feature.startsWith('agent-preload:') ||
+    cases.some(c => harness === 'codex' ? c.codexSandbox !== undefined : c.claudePermission !== undefined);
+}
 export function launch(harness: Harness, workspace: string, options: { cwd: string; addDirs: string[]; codexSandbox?: 'danger-full-access'; claudePermission?: 'bypassPermissions' }): string[] {
   const addDirs = options.addDirs.flatMap(dir => ['--add-dir', dir]);
   return harness === 'claude'
@@ -155,7 +160,7 @@ export class MacDriver implements Driver {
       for (const { installation, features } of plans) {
         if (!this.routing.models[installation.harness]) throw new Error(`native-model-missing:${installation.harness}`);
         for (const { feature, cases } of features) {
-          if (feature === 'runner' || setupFeature(feature) || feature.startsWith('agent-preload:') || cases.some(c => c.codexSandbox || c.claudePermission)) throw new Error(`unsupported-routed-recipe:${feature}`);
+          if (unroutable(feature, installation.harness, cases)) throw new Error(`unsupported-routed-recipe:${feature}`);
         }
       }
     }
