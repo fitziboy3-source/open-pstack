@@ -60,6 +60,7 @@ function observed(record:SessionRecord, verdict:string):boolean {
 export function maintainFormal():Case {
   return {
     id:'stale-model',
+    claudePermission:'bypassPermissions',
     async prepare(f) {
       await git(f,'init','-q','-b','main');
       await put(f,'capacity.mjs',ATOMIC);await put(f,'replay.mjs',REPLAY);
@@ -98,6 +99,7 @@ export function maintainFormal():Case {
 export function createFormal():Case {
   return {
     id:'create-and-mutate',
+    claudePermission:'bypassPermissions',
     async prepare(f) {
       await git(f,'init','-q','-b','main');
       await put(f,'capacity.mjs',ATOMIC);await put(f,'replay.mjs',REPLAY);
