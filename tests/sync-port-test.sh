@@ -5,10 +5,10 @@ repo="$(cd "$(dirname "$0")/.." && pwd)"; script="$repo/scripts/sync-port.sh"
 tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
 fail=0
 check() { local name="$1"; shift; if "$@" >/dev/null 2>&1; then echo "ok: $name"; else echo "FAIL: $name"; fail=1; fi; }
-g() { git -C "$tmp/r" -c user.name=fixture -c user.email=fixture@example.invalid -c commit.gpgsign=false "$@"; }
+g() { git -C "$tmp/r" "$@"; }
 manifests() { for m in .claude-plugin/marketplace.json plugins/pstack/.claude-plugin/plugin.json plugins/pstack/.codex-plugin/plugin.json; do printf '{\n  "name": "pstack",\n  "version": "%s"\n}\n' "$1" > "$tmp/r/$m"; done; }
 mkdir -p "$tmp/r/.claude-plugin" "$tmp/r/plugins/pstack/.claude-plugin" "$tmp/r/plugins/pstack/.codex-plugin"
-g init -q -b port
+g init -q -b port && g config user.name fixture && g config user.email fixture@example.invalid && g config commit.gpgsign false
 manifests 1.0.0; printf '| open-pstack version | `1.0.0` |\n' > "$tmp/r/UPSTREAM.md"; echo base > "$tmp/r/shared.md"; echo base > "$tmp/r/gone.md"; echo base > "$tmp/r/port-only.md"
 g add -A && g commit -qm base && g tag v1.0.0
 g checkout -qb fork

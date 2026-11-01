@@ -44,6 +44,12 @@ test('the sync record is the Sync commit line, compared whole; ambiguity and pro
   expect(syncCommit(`Sync commit candidate: ${head}`)).toBeUndefined();
   expect(syncCommit(`Sync commit has not been updated; counterexample reproduced at: ${head}`)).toBeUndefined();
   expect(syncCommit(`Sync commit: ${old}\n\nSync commit: ${head}`)).toBeUndefined();
+  expect(syncCommit(`Sync commit: ${head}^`)).toBeUndefined();
+  expect(syncCommit(`Sync commit: ${head}~1`)).toBeUndefined();
+  expect(syncCommit(`Sync commit: ${head}..HEAD`)).toBeUndefined();
+  expect(syncCommit(`Sync commit: ${head}:capacity.mjs`)).toBeUndefined();
+  expect(syncCommit(`Sync commit: \`${head.slice(0,7)}\`. At this commit the model was read against reserve.`)).toBe(head.slice(0,7));
+  expect(syncCommit(`Sync commit: ${head}, confirmed 2026-11-01`)).toBe(head);
   expect(namesCommit('| Sync commit | `efb41f20` |',head)).toBe(false);
   expect(namesCommit('| Sync commit | `0000000` |',head)).toBe(false);
   expect(namesCommit(`Sync commit: ${head.slice(0,7)}\n\nHistory: the stale model previously described ${old}.`,head)).toBe(true);

@@ -57,11 +57,14 @@ function observed(record:SessionRecord, verdict:string):boolean {
   return record.tools.some(t=>!t.parent && JSON.stringify(t.input).includes('verification/check.mjs') && t.result?.includes(`"verdict":"${verdict}"`));
 }
 
-/** The commit the skill's `Sync commit:` record names. The fixture prompts ask for that line, as a plain line, a list item, a bold label or a table cell; words before the label do not count. Records that name different commits are ambiguous and count as none. */
+/** The commit the skill's `Sync commit:` record names. The fixture prompts ask for that line, as a plain line, a list item, a bold label or a table cell; words before the label do not count, and a value that is not a bare hash (a revision such as `<hash>^` or `<hash>..HEAD`) counts as none. Records that name different commits are ambiguous and count as none. */
 export function syncCommit(skill:string):string|undefined {
-  const values=[...skill.matchAll(/^[\s|*-]*sync commit\**\s*[|:][\s*`]*([0-9a-f]{7,40})\b/gim)].map(m=>m[1]!.toLowerCase());
-  const longest=values.reduce((a,b)=>b.length>a.length?b:a,'');
-  return longest && values.every(v=>longest.startsWith(v)) ? longest : undefined;
+  const values=[...skill.matchAll(/^[\s|*-]*sync commit\**\s*[|:]([^\n]*)/gim)]
+    .map(m=>/^[\s*`]*([0-9a-f]{7,40})(?=[`*]*(?:[\s|,;)]|\.(?!\.)|$))/i.exec(m[1]!)?.[1]?.toLowerCase());
+  if(values.some(v=>v===undefined)) return undefined;
+  const found=values as string[];
+  const longest=found.reduce((a,b)=>b.length>a.length?b:a,'');
+  return longest && found.every(v=>longest.startsWith(v)) ? longest : undefined;
 }
 /** Whether the skill's sync record names this commit, abbreviated or in full. */
 export function namesCommit(skill:string,head:string):boolean { const token=syncCommit(skill); return token!==undefined && head.startsWith(token); }
