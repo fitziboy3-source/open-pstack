@@ -11,13 +11,18 @@
 # on the manifests and UPSTREAM.md, then lists the conflicts left for a person to read.
 set -eu
 tag="$1"; version="$2"
+[ -z "$(git status --porcelain)" ] || { echo "the checkout has local changes; commit or stash them first"; exit 1; }
 prev="$(sed -n 's/^| open-pstack version | `\([0-9.]*\)[^`]*` |$/\1/p' UPSTREAM.md)"
 [ -n "$prev" ] || { echo "UPSTREAM.md has no open-pstack version row"; exit 1; }
 prev="v$prev"
 git rev-parse -q --verify "$tag^{commit}" >/dev/null || { echo "unknown tag $tag; fetch upstream --tags"; exit 1; }
 git rev-parse -q --verify "$prev^{commit}" >/dev/null || { echo "unknown previous release $prev"; exit 1; }
 ours="$(git rev-parse HEAD)"
-git merge --no-commit --no-ff "$tag" >/dev/null 2>&1 || true
+log="$(mktemp)"
+if ! git merge --no-commit --no-ff "$tag" > "$log" 2>&1 && [ -z "$(git diff --name-only --diff-filter=U)" ]; then
+  echo "merge of $tag did not start:"; cat "$log"; rm -f "$log"; exit 1
+fi
+rm -f "$log"
 for f in $(git diff --name-only --diff-filter=U); do
   o=$(git rev-parse -q --verify "$ours:$f" 2>/dev/null || echo none)
   p=$(git rev-parse -q --verify "$prev:$f" 2>/dev/null || echo none)
