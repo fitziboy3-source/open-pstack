@@ -30,16 +30,20 @@ test('creation begins with passing code but requires mutation evidence',async()=
   expect(await command(['bun','verification/check.mjs'],{cwd:f.dir})).toContain('"verdict":"pass"');
   await expect(c.assert(record('create-formal-verification-skill'),f)).rejects.toThrow('mutation-not-observed');
 });
-test('the sync record is read from its label or the git diff base, and compared whole',()=>{
+test('the sync record is the Sync commit line, compared whole; ambiguity and prose count as none',()=>{
   const head='efb41f2f3838c0902016a9a97bf7e101d4b36e97', old='761782b83ad658da668937afdf9281ef2e45af56';
-  expect(syncCommit('| Sync commit (last confirmed) | `efb41f2` |')).toBe('efb41f2');
-  expect(syncCommit(`Last confirmed code/model sync commit: \`${head}\`.`)).toBe(head);
+  expect(syncCommit('| Sync commit | `efb41f2` |')).toBe('efb41f2');
+  expect(syncCommit(`Sync commit: ${head}`)).toBe(head);
   expect(syncCommit(`- **Sync commit**: ${head}`)).toBe(head);
-  expect(syncCommit(`Compare covered files with \`git diff ${head}..HEAD -- capacity.mjs\`.`)).toBe(head);
+  expect(syncCommit(`Sync commit: ${head.slice(0,7)}\n\n| Sync commit | ${head} |`)).toBe(head);
+  expect(syncCommit(`Previous sync commit: ${old}\n\nSync commit: ${head}`)).toBe(head);
+  expect(syncCommit(`Last confirmed code/model sync commit: ${head}`)).toBeUndefined();
+  expect(syncCommit(`Compare with git diff ${head}..HEAD`)).toBeUndefined();
   expect(syncCommit(`Sync commit: pending\n\nRun git diff ${head}..HEAD`)).toBeUndefined();
   expect(syncCommit(`Update the sync commit after checking ${head}.`)).toBeUndefined();
   expect(syncCommit(`Sync commit candidate: ${head}`)).toBeUndefined();
   expect(syncCommit(`Sync commit has not been updated; counterexample reproduced at: ${head}`)).toBeUndefined();
+  expect(syncCommit(`Sync commit: ${old}\n\nSync commit: ${head}`)).toBeUndefined();
   expect(namesCommit('| Sync commit | `efb41f20` |',head)).toBe(false);
   expect(namesCommit('| Sync commit | `0000000` |',head)).toBe(false);
   expect(namesCommit(`Sync commit: ${head.slice(0,7)}\n\nHistory: the stale model previously described ${old}.`,head)).toBe(true);

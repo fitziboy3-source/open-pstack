@@ -57,11 +57,11 @@ function observed(record:SessionRecord, verdict:string):boolean {
   return record.tools.some(t=>!t.parent && JSON.stringify(t.input).includes('verification/check.mjs') && t.result?.includes(`"verdict":"${verdict}"`));
 }
 
-/** The commit the skill's current sync record names. Generated skills record it on a line labelled "sync commit" (a table cell or a colon, words such as "Last confirmed" may precede the label) or, when they keep no labelled record, as the base of the git diff command they tell the reader to run. A labelled record decides even when its value is not a hash. */
+/** The commit the skill's `Sync commit:` record names. The fixture prompts ask for that line, as a plain line, a list item, a bold label or a table cell; words before the label do not count. Records that name different commits are ambiguous and count as none. */
 export function syncCommit(skill:string):string|undefined {
-  const labelled=/^[\s|*-]*(?:[^\n|:]*?\b)?sync commit(?:\s*\([^)\n]*\))?\**\s*[|:]\s*([^\n]*)/im.exec(skill);
-  if(labelled) return /^[\s*`]*([0-9a-f]{7,40})\b/i.exec(labelled[1]!)?.[1]?.toLowerCase();
-  return /\bgit diff\s+([0-9a-f]{7,40})\b/i.exec(skill)?.[1]?.toLowerCase();
+  const values=[...skill.matchAll(/^[\s|*-]*sync commit\**\s*[|:][\s*`]*([0-9a-f]{7,40})\b/gim)].map(m=>m[1]!.toLowerCase());
+  const longest=values.reduce((a,b)=>b.length>a.length?b:a,'');
+  return longest && values.every(v=>longest.startsWith(v)) ? longest : undefined;
 }
 /** Whether the skill's sync record names this commit, abbreviated or in full. */
 export function namesCommit(skill:string,head:string):boolean { const token=syncCommit(skill); return token!==undefined && head.startsWith(token); }
@@ -82,7 +82,7 @@ export function maintainFormal():Case {
       const head=await commit(f,'Yield during capacity reservation',['capacity.mjs']);
       await writeFile(`${f.dir}.formal-baseline.json`,JSON.stringify({head,product:sha256(SPLIT),checker:sha256(CHECKER)}));
     },
-    prompt:f=>request(f,'maintain-formal-verification-skill','Maintain .claude/skills/verify-capacity/SKILL.md. A change to reserve landed after its sync commit. The existing checker is an exhaustive bounded-state interpreter; keep verification/check.mjs and its two-client, capacity-one bounds unchanged. Update the model from the current code, run the check before and after, replay any counterexample with bun replay.mjs, and report whether the old pass was stale and whether the current code has a bug.'),
+    prompt:f=>request(f,'maintain-formal-verification-skill','Maintain .claude/skills/verify-capacity/SKILL.md. A change to reserve landed after its sync commit. The existing checker is an exhaustive bounded-state interpreter; keep verification/check.mjs and its two-client, capacity-one bounds unchanged. Update the model from the current code, run the check before and after, replay any counterexample with bun replay.mjs, record the new sync commit on its own line as "Sync commit: <full commit hash>" once the model describes the current code, and report whether the old pass was stale and whether the current code has a bug.'),
     async assert(record,f) {
       loaded(record,'maintain-formal-verification-skill');
       const baseline=JSON.parse(await readFile(`${f.dir}.formal-baseline.json`,'utf8'));
@@ -118,7 +118,7 @@ export function createFormal():Case {
       const head=await commit(f,'Atomic capacity module and bounded verification tool',['capacity.mjs','replay.mjs','verification/check.mjs','verification/model.json','README.md']);
       await writeFile(`${f.dir}.formal-baseline.json`,JSON.stringify({head,product:sha256(ATOMIC),checker:sha256(CHECKER)}));
     },
-    prompt:f=>request(f,'create-formal-verification-skill',`Create .claude/skills/verify-capacity/SKILL.md for reserve's capacity invariant. Use the bundled exhaustive bounded model checker (bun verification/check.mjs); keep its interpreter and two-client, capacity-one scope unchanged. Confirm the model matches capacity.mjs. The only authorized product edit is the skill's disposable mutation test: split reserve's check and increment with an await, reflect that split in the model, observe the failure and replay it, then restore both code and model. Record the checked commit, coverage, assumptions, bounds, command and how to distinguish model drift from a bug. Follow the generated skill and report the evidence. The scratch mutation is explicitly permitted by this fixture.`).replace('or change product code.', 'or change product code except for the explicitly permitted scratch mutation.'),
+    prompt:f=>request(f,'create-formal-verification-skill',`Create .claude/skills/verify-capacity/SKILL.md for reserve's capacity invariant. Use the bundled exhaustive bounded model checker (bun verification/check.mjs); keep its interpreter and two-client, capacity-one scope unchanged. Confirm the model matches capacity.mjs. The only authorized product edit is the skill's disposable mutation test: split reserve's check and increment with an await, reflect that split in the model, observe the failure and replay it, then restore both code and model. Record the checked commit on its own line as "Sync commit: <full commit hash>", then the coverage, assumptions, bounds, command and how to distinguish model drift from a bug. Follow the generated skill and report the evidence. The scratch mutation is explicitly permitted by this fixture.`).replace('or change product code.', 'or change product code except for the explicitly permitted scratch mutation.'),
     async assert(record,f) {
       loaded(record,'create-formal-verification-skill');
       const baseline=JSON.parse(await readFile(`${f.dir}.formal-baseline.json`,'utf8'));
