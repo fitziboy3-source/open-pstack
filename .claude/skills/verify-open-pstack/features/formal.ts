@@ -57,8 +57,9 @@ function observed(record:SessionRecord, verdict:string):boolean {
   return record.tools.some(t=>!t.parent && JSON.stringify(t.input).includes('verification/check.mjs') && t.result?.includes(`"verdict":"${verdict}"`));
 }
 
-/** A skill names its sync commit the way git prints it, abbreviated or full. */
-export function namesCommit(skill:string,head:string):boolean { return skill.includes(head.slice(0,7)); }
+/** The hash a skill's own sync-commit record declares, abbreviated or full; a mention elsewhere does not count. */
+export function syncCommit(skill:string):string|undefined { return /sync commit[^\n]*?\b([0-9a-f]{7,40})\b/i.exec(skill)?.[1]; }
+export function namesCommit(skill:string,head:string):boolean { const token=syncCommit(skill); return token!==undefined && head.startsWith(token); }
 
 export function maintainFormal():Case {
   return {

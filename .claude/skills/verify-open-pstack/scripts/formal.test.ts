@@ -30,9 +30,12 @@ test('creation begins with passing code but requires mutation evidence',async()=
   expect(await command(['bun','verification/check.mjs'],{cwd:f.dir})).toContain('"verdict":"pass"');
   await expect(c.assert(record('create-formal-verification-skill'),f)).rejects.toThrow('mutation-not-observed');
 });
-test('a skill may name its sync commit abbreviated or in full',()=>{
-  const head='efb41f2f3838c0902016a9a97bf7e101d4b36e97';
-  expect(namesCommit('| Sync commit | `efb41f2` |',head)).toBe(true);
+test('the sync-commit record names the commit, abbreviated or in full, and nothing else counts',()=>{
+  const head='efb41f2f3838c0902016a9a97bf7e101d4b36e97', old='761782b83ad658da668937afdf9281ef2e45af56';
+  expect(namesCommit('| Sync commit (last confirmed) | `efb41f2` |',head)).toBe(true);
   expect(namesCommit(`Sync commit: ${head}`,head)).toBe(true);
   expect(namesCommit('| Sync commit | `0000000` |',head)).toBe(false);
+  expect(namesCommit('| Sync commit | `efb41f20` |',head)).toBe(false);
+  expect(namesCommit(`| Sync commit | \`${old.slice(0,7)}\` |\n\nCounterexample reproduced on HEAD ${head.slice(0,7)}.`,head)).toBe(false);
+  expect(namesCommit(`Last confirmed at ${head}.`,head)).toBe(false);
 });
