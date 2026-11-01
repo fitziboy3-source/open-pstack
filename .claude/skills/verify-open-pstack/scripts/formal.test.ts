@@ -38,4 +38,11 @@ test('the sync-commit record names the commit, abbreviated or in full, and nothi
   expect(namesCommit('| Sync commit | `efb41f20` |',head)).toBe(false);
   expect(namesCommit(`| Sync commit | \`${old.slice(0,7)}\` |\n\nCounterexample reproduced on HEAD ${head.slice(0,7)}.`,head)).toBe(false);
   expect(namesCommit(`Last confirmed at ${head}.`,head)).toBe(false);
+  expect(namesCommit(`| Sync commit (last commit where the model was confirmed to describe the code) | \`${head.slice(0,7)}\` |`,head)).toBe(true);
+  expect(namesCommit(`- **Sync commit**: ${head}`,head)).toBe(true);
+  expect(namesCommit(`Update the sync commit after checking ${head}.\n\nSync commit: ${old}\n`,head)).toBe(false);
+  expect(namesCommit(`Update the sync commit after checking ${head}.`,head)).toBe(false);
+  expect(namesCommit(`Sync commit has not been updated; counterexample reproduced at: ${head}\n\nSync commit: ${old}\n`,head)).toBe(false);
+  expect(namesCommit(`Sync commit candidate: ${head}\n\nSync commit: ${old}\n`,head)).toBe(false);
+  expect(namesCommit(`Sync commit: see ${head.slice(0,7)} below`,head)).toBe(false);
 });

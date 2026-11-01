@@ -57,8 +57,8 @@ function observed(record:SessionRecord, verdict:string):boolean {
   return record.tools.some(t=>!t.parent && JSON.stringify(t.input).includes('verification/check.mjs') && t.result?.includes(`"verdict":"${verdict}"`));
 }
 
-/** The hash a skill's own sync-commit record declares, abbreviated or full; a mention elsewhere does not count. */
-export function syncCommit(skill:string):string|undefined { return /sync commit[^\n]*?\b([0-9a-f]{7,40})\b/i.exec(skill)?.[1]; }
+/** The hash the skill's labelled sync-commit field declares, as a table row or after a colon, abbreviated or full. Prose does not count. */
+export function syncCommit(skill:string):string|undefined { return /^[\s|*-]*sync commit(?:\s*\([^)\n]*\))?\**\s*[|:][\s*`]*([0-9a-f]{7,40})\b/im.exec(skill)?.[1]; }
 export function namesCommit(skill:string,head:string):boolean { const token=syncCommit(skill); return token!==undefined && head.startsWith(token); }
 
 export function maintainFormal():Case {
