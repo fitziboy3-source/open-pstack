@@ -3,6 +3,10 @@
 Mergify auto-queue is live: ready PRs to main require passing verify, Unfret and exact-head live-gate, and no unresolved review thread; workflow changes require operator queueing.
 This port applies the Cursor → Claude Code substitutions in skill bodies. Earlier drafts left them flagged; this revision resolves them. A later pass added a Codex build that shares the same skills; see [Codex port](#codex-port) below.
 
+## 1.16.0-adam.20261101 syncs the fork to Open Pstack 1.16.0
+
+Adam's fork merges released Open Pstack 1.16.0, which tracks Cursor pstack 0.15.29, into `adam/release`. It supersedes the fork's October 19 interim import of Cursor 0.15.28. The fork's front-door gate, cloud installer, verifier patch and model choices remain. `FORK.md` lists the local patches and the sync record.
+
 ## 1.16.0 syncs to Cursor pstack 0.15.29
 
 Open Pstack 1.16.0 tracks Cursor pstack 0.15.29 at `88d47514b82e7c44f00f2b2a72ff6dd12158038c`. Sixteen upstream commits since 0.15.25 touch pstack. Nine change skill content, and all nine are applied with the port adaptations below. `a968159` names two skills after their folders: the port's `poteto-mode` already complies, and `make-bot-ui` stays out. Three add upstream's own Claude Code install and a docs check, which stay out apart from their README text. Three bump only the Cursor manifests and guide, which stay out. The release also fixes #46 and #235, and ships Claude Haiku 5.5 lanes (#223), foreground waits on Claude Code (#232, #233) and the comment sweep (#218), all merged after 1.15.0. Default roles and panels are unchanged.

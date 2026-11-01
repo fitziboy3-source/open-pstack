@@ -14,8 +14,9 @@ This fork is the pinned source for the pstack plugin on Adam Vellequette's Claud
 | 2 | `plugins/pstack/skills/correct/SKILL.md` | Drops `disable-model-invocation: true` from the frontmatter. | The router must be able to call it (decided 2026-10-04). Since port v1.8.0 the skill itself, `benchmark-checklist`, and `principle-explain-the-number` come from upstream. |
 | 4 | `scripts/front-door.py`, `plugins/pstack/.front-door.json`, every `SKILL.md`, `skills/*/agents/openai.yaml` | `front-door.py passive` makes every skill explicit-only (Claude Code: `disable-model-invocation: true`; Codex: `allow_implicit_invocation: false`) and adds a read-by-path note to the router. `front-door.py active` restores the port byte for byte. The release branch shipped passive until the front-door switch on 2026-10-05; it is active since (the commit that made it so says so). | Installed skills must not steer running lanes before the front door switches. The safety review (2026-10-04) found the port lets every skill start on its own. |
 | 5 | `scripts/cloud-setup.sh`, `tests/cloud-setup-test.sh` | New files. The script installs the kit into a Claude Code cloud session as the personal skills-directory plugin `pstack@skills-dir`. | A cloud session loads no plugin from the Mac or from a repo's settings. See "Cloud sessions" below. |
+| 6 | `.claude/skills/verify-open-pstack/` | `REPO` is this fork. `features/formal.ts` holds the recipes for the two formal verification skills, `skill-invocation:poteto-mode` runs a route-only case, a skill's `agents/openai.yaml` selects its Codex invocation surface, and `FORK.md` and `TEAM-INSTALL.md` are non-runtime paths. | The verifier publishes live-gate evidence only to this fork and must exercise the surfaces the fork ships. |
 
-Last upstream sync: port release `v1.8.0`, merged 2026-10-15. Patch 3 (the two router index lines) is retired: upstream's router names both skills.
+Last upstream sync: port release `v1.16.0` (Cursor pstack 0.15.29), merged 2026-11-01 as `1.16.0-adam.20261101`. It supersedes the October 19 interim import of Cursor 0.15.28 below; `create-formal-verification-skill` is model-invocable since then, as the port ships it, because setup's offer invokes it. Patch 3 (the two router index lines) is retired: upstream's router names both skills.
 
 ## The front-door switch (slice 4 of the brief)
 
@@ -50,7 +51,7 @@ Routines and `claude --cloud` use the same environments, so they need no extra s
 - **Test:** `bash tests/cloud-setup-test.sh`.
 - **Codex cloud:** no step yet. OpenAI's docs say a cloud task loads skills stored in the repository and does not sync personal skills. They do not say whether an environment's install script can place skills in `$HOME/.agents/skills`. That needs a probe in a real Codex cloud task.
 
-## October 19, 2026 update
+## October 19, 2026 update (superseded by the v1.16.0 sync on 2026-11-01)
 
 This candidate uses released Open Pstack 1.15.0 at `39cb5e4a4d3c03e432a0dc840bcfdae0856166ac` and the shared skill changes from Cursor pstack 0.15.28 at `d457567332aa6989e753ea289f30ea2bfbc80bc0`. It is versioned `1.15.0-adam.20261019` to distinguish the fork from the released port.
 
