@@ -13,9 +13,10 @@ This fork is the pinned source for the pstack plugin on Adam Vellequette's Claud
 | 1 | `plugins/pstack/hooks/session-start` | The poteto-mode mandate prints only while `~/.agents/pstack-front-door.on` exists (override: `PSTACK_FRONT_DOOR_FLAG`). | The kit installs before the front door switches. One file turns the router on or off for every lane, and is the stop switch afterwards. |
 | 2 | `plugins/pstack/skills/correct/SKILL.md` | Drops `disable-model-invocation: true` from the frontmatter. | The router must be able to call it (decided 2026-10-04). Since port v1.8.0 the skill itself, `benchmark-checklist`, and `principle-explain-the-number` come from upstream. |
 | 4 | `scripts/front-door.py`, `plugins/pstack/.front-door.json`, every `SKILL.md`, `skills/*/agents/openai.yaml` | `front-door.py passive` makes every skill explicit-only (Claude Code: `disable-model-invocation: true`; Codex: `allow_implicit_invocation: false`) and adds a read-by-path note to the router. `front-door.py active` restores the port byte for byte. The release branch shipped passive until the front-door switch on 2026-10-05; it is active since (the commit that made it so says so). | Installed skills must not steer running lanes before the front door switches. The safety review (2026-10-04) found the port lets every skill start on its own. |
+| 6 | `plugins/pstack/skills/poteto-mode/scripts/orch/` (`orch.ts`, `store.ts`, `orch.test.ts`), `scripts/package.json` | Kept after Cursor pstack 0.15.36 deleted them with the agentic Orchestrate playbook; the test list keeps `orch`. | The harness's `chief-of-staff` skill runs its program against this store CLI (`PSTACK_ORCH`). The playbook text no longer names it. Dropping the files is Adam's call, after the chief-of-staff runtime moves off them. |
 | 5 | `scripts/cloud-setup.sh`, `tests/cloud-setup-test.sh` | New files. The script installs the kit into a Claude Code cloud session as the personal skills-directory plugin `pstack@skills-dir`. | A cloud session loads no plugin from the Mac or from a repo's settings. See "Cloud sessions" below. |
 
-Last upstream sync: port release `v1.8.0`, merged 2026-10-15. Patch 3 (the two router index lines) is retired: upstream's router names both skills.
+Last upstream sync: port release `v1.16.0`, merged 2026-11-01, with Cursor pstack 0.15.30 to 0.15.36 layered on top (the November 1, 2026 update below). Patch 3 (the two router index lines) is retired: upstream's router names both skills.
 
 ## The front-door switch (slice 4 of the brief)
 
@@ -59,3 +60,15 @@ The import adds create-formal-verification-skill and maintain-formal-verificatio
 The original formal skill bodies are retained byte for byte. Their verification scope, mutation checks, reporting duties and prohibition on product edits remain intact. The shared model sheet, front-door flag, gated session hook and cloud installer are retained.
 
 The repository-local verifier publishes only to this fork. Its feature map includes both formal skills and their Codex invocation policies. The Windows hook check first verifies silence without the fork's flag, then creates a run-owned flag before exercising the enabled hook. It never changes the operator's flag.
+
+## November 1, 2026 update
+
+This candidate merges released Open Pstack 1.16.0 at `dc9d157276ff9c3fdf1e4a8d3e39e714debef8b1` (Cursor pstack 0.15.29) into `adam/release`, then layers Lauren Tan's skill changes from 0.15.30 to 0.15.36 at `ae5650febf4320793844c12c4adaa937f417f8da`. It is versioned `1.16.0-adam.20261101`.
+
+The merge keeps every fork patch in the table above and takes the port's 1.16.0 content: the 0.15.29 sync, Claude Haiku 5.5 lanes, foreground subagent waits, quiet setup reruns, the transcript folder encoding fix and the comment sweep. The layer adds `statechart` and `ketchup-video`, the adversarial `interrogate`, the agentic Orchestrate playbook, the arena cross-judge rule, and the smaller changes `CHANGES.md` lists. `UPSTREAM.md` records each commit left out and why.
+
+Two decisions differ from the October 19 state. The orch store CLI stays as patch 6, because the harness's chief-of-staff skill depends on it. `create-formal-verification-skill` follows the port and is model-invocable on both harnesses, because setup's offer routes to it by name; its Codex explicit-only policy file is removed. `maintain-formal-verification-skill` stays typed-only on both.
+
+Under the arena cross-judge rule, a pool whose entries are all the parent's provider skips the judge. Adam's sheet pairs Claude with Codex, so a judge always exists. Ashley's Claude-only sheet skips it, and Arena says so in its synthesis note.
+
+The mechanical part of the layer was done with git plumbing (the port's `upstream-audit.py` and `upstream-merge.py` rules re-implemented outside the checkout): 7 paths verbatim, 408 added, 4 deleted, 3 retained, 6 clean three-way merges, 14 hand resolutions, 6 unmapped Cursor manifest and guide paths. The Bun tests, typecheck and static invariants were not run where this candidate was built; they run in the fork's CI on the pull request and must pass before `adam/release` moves.

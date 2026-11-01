@@ -136,6 +136,8 @@ That is the main workflow. The other skills are there when poteto-mode needs the
 | `poteto-help` | You want to know which skill, playbook, or principle fits a question. |
 | `in-your-own-words` | You want the agent to restate your goal and the problem before it starts. |
 | `sharpen` | You want a prompt rewritten deeper, not bigger, before you send it. It returns the rewritten prompt and does not do the task. |
+| `ketchup-video` | You want the `/ketchup` catch-up as a short subtitled video of slides, with the calls waiting on you as text under it. |
+| `statechart` | Someone who owns the behavior needs to see it as a chart checked by a TLA+ model, with the shortest path to each state that breaks a rule. |
 
 Plugin skills include `pstack:` in their name. In Claude Code, invoke a native skill such as `/pstack:architect`. In Codex, ask for the skill, such as `Use pstack:architect for this design.` See the [technical reference](docs/reference.md) for the full list.
 

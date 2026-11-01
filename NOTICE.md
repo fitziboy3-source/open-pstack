@@ -66,3 +66,5 @@ Files authored for this port (not derived from upstream):
 - `REVIEW.md` (the review panel's usage and waiver-scope mandate, #153; adapted from mastra-pilot's `REVIEW.md`, not from upstream)
 - `CHANGES.md`
 - `LICENSE-cursor-team-kit` (copied verbatim from upstream cursor-team-kit MIT)
+
+Adam's fork supplements Open Pstack 1.16.0 with Cursor pstack skill changes through `ae5650febf4320793844c12c4adaa937f417f8da` (0.15.36), including the statechart and ketchup-video skills, and retains the orch store CLI that 0.15.36 removed. The existing Cursor license applies.

@@ -8,11 +8,11 @@ open-pstack tracks [Cursor's pstack](https://github.com/cursor/plugins/tree/main
 | --- | --- |
 | Repository | `https://github.com/cursor/plugins.git` |
 | Path | `pstack/` |
-| Commit | `88d47514b82e7c44f00f2b2a72ff6dd12158038c` |
-| Upstream version | `0.15.29` |
-| open-pstack version | `1.16.0` |
+| Commit | `ae5650febf4320793844c12c4adaa937f417f8da` |
+| Upstream version | `0.15.36` |
+| open-pstack version | `1.16.0-adam.20261101` |
 
-The table above is the current Cursor sync point. Open Pstack 1.16.0 imported this 0.15.29 sync. `README-UPSTREAM.md` preserves the upstream pstack README verbatim. `CHANGES.md` and `NOTICE.md` describe the adaptations and provenance.
+The table above is the current Cursor sync point. Open Pstack 1.16.0 imported the 0.15.29 sync at `88d47514b82e7c44f00f2b2a72ff6dd12158038c`; Adam's fork (`FORK.md`) layers the skill changes from 0.15.30 to 0.15.36 on top of it. `README-UPSTREAM.md` preserves the upstream pstack README verbatim. `CHANGES.md` and `NOTICE.md` describe the adaptations and provenance.
 
 ## Upstream-only exclusions
 
@@ -40,6 +40,12 @@ The table above is the current Cursor sync point. Open Pstack 1.16.0 imported th
 - `create-formal-verification-skill` takes `4382e68` without its `disable-model-invocation: true` line, because setup's formal verification offer invokes it and the flag blocks that route on Claude Code. `tests/skill-collision-repro.sh` lists it in `routed_model_skills`. `maintain-formal-verification-skill` keeps the flag and runs only when typed.
 - Setup's verification offers are steps 10 and 11 in the port, after its step 9 smoke test. The port never took upstream's step 7, "Offer a verification skill", which upstream has carried since 0.11.3. This sync restores it as step 10, and `f9be7aa`'s formal verification offer becomes step 11. Each keeps upstream's check for a project that already has one.
 - `poteto-agent.md` does not take `b93e811`'s search of `~/.cursor/plugins/` for poteto-mode, its highest-version rule, or its note that the skill catalog hides poteto-mode. The Claude agent preloads `pstack:poteto-mode`, the port's poteto-mode is not hidden, and Codex has no `poteto-agent` type. The agent keeps upstream's "Use the absolute path your parent gave you."
+
+- From 0.15.30 to 0.15.36 (Adam's fork, 2026-11-01): the `pstack/plugin.json` and `pstack/.cursor-plugin/plugin.json` bumps in `eb4db2b`, `642289e`, `b1a1298`, `7c7bde7`, `164ced1`, `ab1f702` and `c742dd6`, and the guide edits in `ab1f702` and `c742dd6`, are not imported, as for the earlier bumps and the guide above.
+- `c742dd6`'s deletion of `scripts/orch/orch.ts`, `store.ts` and `orch.test.ts` is not applied. Adam's harness runs its chief-of-staff program against that store CLI, so the fork keeps the three files and their test, and the `scripts/package.json` test list keeps `orch`. The agentic Orchestrate playbook itself is taken, with the port's harness substitutions, and no longer names the CLI.
+- `ab1f702`'s collapse of Autopilot-stack to two steps, its Autopilot-full step 5 trunk-move rule, and its babysit step 4 sentence that lets an Autopilot-stack owner publish its own rebase are not applied, as for `ce649c0` above: the port keeps the landing procedure from 1.3.0, and in Autopilot-stack the root is the one topology writer. Its `Task`-slug fallback text in poteto-mode's Match the model paragraph is not applied, as for `12d587d` above: a rejected model stays a named dropout. Its multi-phase-plan step 4 pick rule is not applied; the port keeps the rule at the end of `playbooks/autopilot-stack.md`. Its new blocking rule in Autopilot-full step 4 and the matching multi-phase-plan verdict line are applied, with the port's one-writer sentence kept.
+- `ab1f702`'s rewrite of `interrogate` is applied without `disable-model-invocation: true`, as for `73f8be4` above, and with the port's dispatch contract and role pointer; its four reference files are deleted. Its arena cross-judge rule is applied in provider terms: the judge is never the parent's provider, and a pool with no other provider skips the judge. `7054003`'s reflect rule names `.claude/skills/` and `~/.claude/skills/` (Codex: `.agents/skills/`) in place of the Cursor folders.
+- `eb4db2b` to `164ced1` add the `statechart` skill and `3c0fdb4` the `ketchup-video` skill. Both are imported verbatim; neither names a Cursor primitive. `statechart/scripts/**` is mapped to the verifier's `tools` feature, which does not exercise it yet.
 
 ## Local port-patch ledger
 
