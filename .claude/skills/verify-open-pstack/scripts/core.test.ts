@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
 import registryData from '../features/registry.json';
+import { recipe } from '../features/recipes.ts';
 import { classify, completeEvidence, matches, newReceipt, requiredFeatures, requiredHarnesses, validateRegistry } from './core.ts';
 import { HARNESSES, type Receipt } from './types.ts';
 import codexManifest from '../../../../plugins/pstack/.codex-plugin/plugin.json';
@@ -127,13 +128,11 @@ describe('registry and ownership', () => {
     for (const filename of ['plugins/pstack/.claude-plugin/plugin.json', 'plugins/pstack/.codex-plugin/plugin.json', '.claude-plugin/marketplace.json', '.agents/plugins/marketplace.json']) {
       expect(classify([{ filename }], registry).features).toContain('claude:setup');
     }
-    // The Codex marketplace carries no version, so the flag never narrows it.
     expect(classify([{ filename: '.agents/plugins/marketplace.json', versionOnly: true }], registry).features).toContain('codex:setup');
     expect(classify([{ filename: 'plugins/pstack/.claude-plugin/plugin.json', versionOnly: true }], registry).features).toEqual(['claude:hook:startup']);
     expect(classify([{ filename: '.claude-plugin/marketplace.json', versionOnly: true }], registry).features).toEqual(['claude:hook:startup']);
     expect(classify([{ filename: 'plugins/pstack/.codex-plugin/plugin.json', versionOnly: true }], registry).features).toEqual(['codex:hook:startup']);
   });
-  // The changed files of #199's release commit, e99abd7.
   const RELEASE = [{ filename: '.claude-plugin/marketplace.json', versionOnly: true }, { filename: 'CHANGES.md' }, { filename: 'README.md' }, { filename: 'UPSTREAM.md' },
     { filename: 'docs/reference.md' }, { filename: 'plugins/pstack/.claude-plugin/plugin.json', versionOnly: true }, { filename: 'plugins/pstack/.codex-plugin/plugin.json', versionOnly: true }];
   test('a version-only release reaches only the startup hook in both harnesses', () => {
@@ -188,6 +187,35 @@ describe('registry and ownership', () => {
     expect(r.selection.features).toEqual(both('project-skill'));
     evidence(r);
     expect(() => completeEvidence(r)).not.toThrow();
+  });
+  test('the shared recipe implementation reaches every implemented recipe and preserves project proof', () => {
+    const path = '.claude/skills/verify-open-pstack/features/recipes.ts';
+    const expected = [...both('catalog', 'setup', 'runner', 'shipped-tools', 'hook:startup', 'project-skill',
+      ...registry.skills.map(skill => `skill-invocation:${skill}`)), 'claude:agent-preload:poteto-agent'].sort();
+    for (const file of [{ filename: path }, { filename: 'docs/moved.md', previous_filename: path }]) {
+      const s = classify([file], registry);
+      expect(s.features).toEqual(expected);
+      expect(s.skills).toEqual([...registry.skills].sort());
+      expect(s.noRuntime).toBe(false);
+      for (const harness of HARNESSES) {
+        for (const feature of s.features.filter(f => f.startsWith(`${harness}:`))) {
+          expect(recipe(feature.slice(harness.length + 1), harness).length).toBeGreaterThan(0);
+        }
+      }
+    }
+  });
+  test('nearby verifier documentation retains only project proof', () => {
+    for (const filename of ['.claude/skills/verify-open-pstack/features/README.md',
+      '.claude/skills/verify-open-pstack/features/skill-invocation.md']) {
+      expect(classify([{ filename }], registry).features).toEqual(both('project-skill'));
+    }
+  });
+  test('shared recipe expansion survives overlapping catalog ownership without broadening ordinary catalog paths', () => {
+    const path = '.claude/skills/verify-open-pstack/features/recipes.ts';
+    const overlapping = { ...registry, catalog: [...registry.catalog, path], shared: [...registry.shared, path] };
+    expect(classify([{ filename: path }], overlapping)).toEqual(classify([{ filename: path }], registry));
+    const catalog = registry.catalog[0]!;
+    expect(classify([{ filename: catalog }], overlapping)).toEqual(classify([{ filename: catalog }], registry));
   });
   test('ordinary repository documentation selects no harnesses', () => {
     const s = classify([{ filename: 'README.md' }, { filename: 'docs/guide.md' }], registry);
