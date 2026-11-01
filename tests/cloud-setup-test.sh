@@ -51,7 +51,7 @@ check "every skill is installed" test "$(ls "$dest/skills" | wc -l)" -eq "$(ls "
 check "every agent is installed" test "$(ls "$dest/agents" | wc -l)" -eq "$(ls "$repo/plugins/pstack/agents" | wc -l)"
 check "the session hook is installed and executable" test -x "$dest/hooks/session-start"
 check "the installed kit records its source commit" grep -qx "sha=$sha" "$dest/.cloud-kit"
-check "the kit ships passive, as on the Mac" grep -q '^disable-model-invocation: true$' "$dest/skills/bro/SKILL.md"
+check "the installed kit keeps the branch's invocation policy" cmp -s "$dest/skills/bro/SKILL.md" "$repo/plugins/pstack/skills/bro/SKILL.md"
 
 git -C "$kit" rm -r --quiet plugins/pstack/skills/bro
 mkdir -p "$kit/plugins/pstack/skills/added" && printf -- '---\nname: added\ndescription: x\n---\n' > "$kit/plugins/pstack/skills/added/SKILL.md"
