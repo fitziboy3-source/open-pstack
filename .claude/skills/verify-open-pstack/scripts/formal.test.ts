@@ -3,7 +3,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { command } from './io.ts';
-import { createFormal, maintainFormal } from '../features/formal.ts';
+import { createFormal, maintainFormal, namesCommit } from '../features/formal.ts';
 import type { Fixture } from '../features/recipes.ts';
 import type { SessionRecord } from './types.ts';
 const roots:string[]=[];
@@ -29,4 +29,10 @@ test('creation begins with passing code but requires mutation evidence',async()=
   expect(await command(['bun','replay.mjs'],{cwd:f.dir})).toContain('"used":1');
   expect(await command(['bun','verification/check.mjs'],{cwd:f.dir})).toContain('"verdict":"pass"');
   await expect(c.assert(record('create-formal-verification-skill'),f)).rejects.toThrow('mutation-not-observed');
+});
+test('a skill may name its sync commit abbreviated or in full',()=>{
+  const head='efb41f2f3838c0902016a9a97bf7e101d4b36e97';
+  expect(namesCommit('| Sync commit | `efb41f2` |',head)).toBe(true);
+  expect(namesCommit(`Sync commit: ${head}`,head)).toBe(true);
+  expect(namesCommit('| Sync commit | `0000000` |',head)).toBe(false);
 });

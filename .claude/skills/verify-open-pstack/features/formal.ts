@@ -57,6 +57,9 @@ function observed(record:SessionRecord, verdict:string):boolean {
   return record.tools.some(t=>!t.parent && JSON.stringify(t.input).includes('verification/check.mjs') && t.result?.includes(`"verdict":"${verdict}"`));
 }
 
+/** A skill names its sync commit the way git prints it, abbreviated or full. */
+export function namesCommit(skill:string,head:string):boolean { return skill.includes(head.slice(0,7)); }
+
 export function maintainFormal():Case {
   return {
     id:'stale-model',
@@ -85,7 +88,7 @@ export function maintainFormal():Case {
       const replay=record.tools.some(t=>JSON.stringify(t.input).includes('replay.mjs') && t.result?.includes('"used":2'));
       if(!replay) throw new Error('formal-counterexample-not-replayed');
       const skill=await readFile(join(f.dir,'.claude/skills/verify-capacity/SKILL.md'),'utf8');
-      if(!skill.includes(baseline.head)) throw new Error('formal-sync-commit-not-updated');
+      if(!namesCommit(skill,baseline.head)) throw new Error('formal-sync-commit-not-updated');
       const result=await readFile(join(f.dir,'result.md'),'utf8');
       if(!/bug|oversubscri/i.test(result) || !/stale|drift/i.test(result)) throw new Error('formal-finding-not-reported');
       // The captain independently runs the unmodified checker on the maintained model.
@@ -120,7 +123,7 @@ export function createFormal():Case {
       if(!observed(record,'pass') || !observed(record,'bug')) throw new Error('formal-mutation-not-observed');
       if(!record.tools.some(t=>JSON.stringify(t.input).includes('replay.mjs') && t.result?.includes('"used":2'))) throw new Error('formal-mutation-not-replayed');
       const path=join(f.dir,'.claude/skills/verify-capacity/SKILL.md'), skill=await readFile(path,'utf8');
-      if(!/^---\n[\s\S]*name:\s*verify-capacity[\s\S]*description:/m.test(skill) || !skill.includes(baseline.head) || !skill.includes('capacity.mjs') || !skill.includes('verification/check.mjs') || !/bound|two|2/i.test(skill)) throw new Error('formal-skill-contract-incomplete');
+      if(!/^---\n[\s\S]*name:\s*verify-capacity[\s\S]*description:/m.test(skill) || !namesCommit(skill,baseline.head) || !skill.includes('capacity.mjs') || !skill.includes('verification/check.mjs') || !/bound|two|2/i.test(skill)) throw new Error('formal-skill-contract-incomplete');
       const output=await f.run(['bun','verification/check.mjs'],{cwd:f.dir});
       if(!output.includes('"verdict":"pass"')) throw new Error('formal-final-check-failed');
       return {assertions:['skill-loaded','project-skill-created','coverage-and-sync-recorded','mutation-caught','mutation-replayed','code-and-model-restored','bounded-check-passes'],files:[path,join(f.dir,'result.md'),join(f.dir,'verification/model.json')]};
