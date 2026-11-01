@@ -3,7 +3,7 @@
 This fork is the pinned source for the pstack plugin on Adam Vellequette's Claude Code and Codex lanes. Lauren Tan's official pstack (`cursor/plugins/pstack`) is the source of truth for content; `ericlitman/open-pstack` supplies the Claude Code and Codex translation.
 
 - **Install ref:** branch `adam/release`. `main` mirrors `ericlitman/open-pstack` and carries no local change.
-- **Sync rule:** a deliberate diff, never a blind pull. Merge upstream `main` into `adam/release`, read the diff, re-run the checks, then reinstall.
+- **Sync rule:** a deliberate diff, never a blind pull. On a branch cut from `adam/release`, run `scripts/sync-port.sh <port-tag> <fork-version>`: it merges the port release, resolves every file that needs no judgment, stamps the version, and lists the files left to read. Resolve those, add the `CHANGES.md` section the static check requires, re-run the checks, open the PR, then reinstall.
 - **Design brief:** `~/.agents/harness/docs/design/pstack-front-door.md`.
 
 ## Local patches
