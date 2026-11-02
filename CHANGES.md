@@ -3,6 +3,14 @@
 Mergify auto-queue is live: ready PRs to main require passing verify, Unfret and exact-head live-gate, and no unresolved review thread; workflow changes require operator queueing.
 This port applies the Cursor → Claude Code substitutions in skill bodies. Earlier drafts left them flagged; this revision resolves them. A later pass added a Codex build that shares the same skills; see [Codex port](#codex-port) below.
 
+## 1.16.0-adam.20261102 adds /statechart-diagram
+
+**New skill.** `/statechart-diagram` draws the `chart.mmd` and `report.md` that `/statechart` writes as a square plate in pen and coloured pencil on paper, after Kevin Ngo's statechart-art: Pele lays the chart out in a hand font, `scripts/plate.mjs` draws it with `@napi-rs/canvas` (no browser), objects from the reader's world sit beside the states they belong to, TLC's marks are drawn as red cards, red paths and a "rule broken" stamp, and the small line under the title reports what TLC checked. It runs on Node 20 or later and installs Pele, the canvas and two Open Font License fonts with `npm install` in its `scripts/` on first use. The skill is model-invocable; `/statechart` stays typed only.
+
+**New hook.** `PostToolUse` on Bash runs `hooks/after-statechart` through the existing `run-hook.cmd` wrapper. The script reads the tool call, and when the `/statechart` runner has just written a `chart.mmd`, it adds one note to the model's context asking for the plate; on every other command it is silent and exits in a few milliseconds, and without Node it exits 0. `/statechart`'s hand-off asks for the plate as well, so the chain also holds where hooks do not run.
+
+**Listings.** `README.md`, `docs/reference.md`, `poteto-help` and the verifier's skill registry name the new skill.
+
 ## 1.16.0-adam.20261101 syncs to Cursor pstack 0.15.36
 
 Adam's fork at `1.16.0-adam.20261101` merges released Open Pstack 1.16.0 and layers Lauren Tan's pstack skill changes from 0.15.30 to 0.15.36 (`ae5650f`) on top. The fork's front-door gate, cloud installer, verifier additions and model sheet stay. See `FORK.md` for the patch table and `UPSTREAM.md` for every exclusion.

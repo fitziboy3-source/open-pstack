@@ -61,6 +61,7 @@ Files authored for this port (not derived from upstream):
 - `plugins/pstack/skills/babysit/SKILL.md` (independently authored; workflow informed by Cursor's public `/babysit` behavior)
 - `plugins/pstack/agents/pstack-<family>-<effort>.md` for the Fable, Opus, Sonnet, Opus 5.5 and Haiku 5.5 families (Claude-native lanes at each selectable effort)
 - `plugins/pstack/hooks/hooks.json`, `plugins/pstack/hooks/session-start`, `plugins/pstack/hooks/session-start-context.md`, and `plugins/pstack/hooks/.gitattributes` (the auto-fire hook, its mandate, and LF checkout on Windows)
+- `plugins/pstack/skills/statechart-diagram/` (fork addition: draws a `/statechart` chart as a plate in pen and coloured pencil; an independent re-implementation of the technique in Kevin Ngo's statechart-art, MIT; its `scripts/` install Pele (MIT), `@napi-rs/canvas` (MIT) and the Caveat and Patrick Hand fonts (SIL Open Font License) from npm on first use) and `plugins/pstack/hooks/after-statechart` (the hook that asks for the plate once `/statechart` has written a chart)
 - `NOTICE.md` (this file)
 - `README.md`
 - `REVIEW.md` (the review panel's usage and waiver-scope mandate, #153; adapted from mastra-pilot's `REVIEW.md`, not from upstream)

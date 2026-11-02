@@ -10,7 +10,7 @@ open-pstack tracks [Cursor's pstack](https://github.com/cursor/plugins/tree/main
 | Path | `pstack/` |
 | Commit | `ae5650febf4320793844c12c4adaa937f417f8da` |
 | Upstream version | `0.15.36` |
-| open-pstack version | `1.16.0-adam.20261101` |
+| open-pstack version | `1.16.0-adam.20261102` |
 
 The table above is the current Cursor sync point. Open Pstack 1.16.0 imported the 0.15.29 sync at `88d47514b82e7c44f00f2b2a72ff6dd12158038c`; Adam's fork (`FORK.md`) layers the skill changes from 0.15.30 to 0.15.36 on top of it. `README-UPSTREAM.md` preserves the upstream pstack README verbatim. `CHANGES.md` and `NOTICE.md` describe the adaptations and provenance.
 
@@ -48,6 +48,8 @@ The table above is the current Cursor sync point. Open Pstack 1.16.0 imported th
 - `eb4db2b` to `164ced1` add the `statechart` skill and `3c0fdb4` the `ketchup-video` skill. Both are imported verbatim; neither names a Cursor primitive. `statechart/scripts/**` is mapped to the verifier's `tools` feature, which does not exercise it yet.
 
 ## Local port-patch ledger
+
+- **statechart hand-off draws the plate**: Cursor's `statechart` ends its Hand off with the chart, the bug lines and the rerun command. The fork adds one more sentence: invoke `statechart-diagram` on the output folder, once, because the plugin's `after-statechart` hook asks for the same. `statechart-diagram` and the hook are fork additions, not upstream content.
 
 - **#235 — Claude transcript folder encoding**: the port wrote Claude Code's per-project transcript path into `recall`, `automate-me` and the `session-pickup` playbook. Claude Code encodes each `/` and each `.` in the workspace path as `-`, so a `.claude/worktrees/` session's folder holds `--claude-worktrees-`. Keep both characters in those three lines during syncs.
 - **#140 — Reflect transcript resolution**: Cursor's Reflect step 1 reads the `agent-transcripts/` directory its system prompt names; the port had substituted Claude Code's per-project directory, which left Codex without a lookup. The port replaces that step's body with one line that points to `plugins/pstack/skills/poteto-mode/references/codex-tools.md#active-transcripts`, and leaves the rest of `reflect/SKILL.md` unchanged. That mapping section holds the harness specifics: the Claude per-project scope, layouts, candidate and scan limits, opening-message verification, the Codex resolver call, and the 2,000-word digest fallback. The port-authored Bun resolver `plugins/pstack/skills/poteto-mode/scripts/resolve-codex-transcript.ts`, started through the `sh` launcher `resolve-codex-transcript` next to it so project Bun config and `.env` files cannot affect it, looks up the parent's known chat ID in Codex's read-only `threads` index, checks rollout scope and ownership, and prints opening-message metadata without transcript text. Preserve this divergence during upstream syncs: keep step 1 as the one-line pointer and keep the mapping section and resolver.

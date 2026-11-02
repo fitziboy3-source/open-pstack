@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Runs the statechart-diagram hand-off check after a Bash tool call. The check is a Node script; without
+# Node the hook has nothing to say and exits 0, so the plugin still works where only bash is installed.
+set -euo pipefail
+
+case "$0" in
+  */*|*\\*) dir="${0%[/\\]*}" ;;
+  *) dir=. ;;
+esac
+node_bin="$(command -v node 2>/dev/null || true)"
+[ -n "$node_bin" ] || exit 0
+exec "$node_bin" "$dir/../skills/statechart-diagram/hooks/after-statechart.mjs"

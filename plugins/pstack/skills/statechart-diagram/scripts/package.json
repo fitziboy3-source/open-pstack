@@ -1,0 +1,14 @@
+{
+  "name": "statechart-diagram-scripts",
+  "private": true,
+  "type": "module",
+  "description": "Draws a /statechart chart as a plate in pen and coloured pencil: pele lays the chart out, the kit draws it on paper.",
+  "license": "MIT",
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "@fontsource/caveat": "^5.0.0",
+    "@fontsource/patrick-hand": "^5.0.0",
+    "@napi-rs/canvas": "0.1.84",
+    "pele": "1.9.0"
+  }
+}
