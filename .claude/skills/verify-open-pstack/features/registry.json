@@ -80,6 +80,7 @@
     ".github/workflows/windows-hooks.yml"
   ],
   "nonRuntime": [
+    "plugins/pstack/skills/statechart-diagram/assets/**", "plugins/pstack/skills/statechart-diagram/evals/**",
     "README.md", "REVIEW.md", "CHANGES.md", "LICENSE", "LICENSE.md", "UPSTREAM.md", "FORK.md", "TEAM-INSTALL.md",
     "NOTICE.md", "README-UPSTREAM.md", "LICENSE-cursor-team-kit", "LICENSE-superpowers",
     ".gitignore", ".mergify.yml", "docs/**", "assets/**",
