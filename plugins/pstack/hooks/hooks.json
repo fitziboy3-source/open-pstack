@@ -12,6 +12,20 @@
           }
         ]
       }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.cmd\" after-statechart",
+            "commandWindows": "C:\\Windows\\System32\\cmd.exe /d /v:on /s /c \"\"!PLUGIN_ROOT!\\hooks\\run-hook.cmd\" after-statechart\"",
+            "timeout": 10,
+            "statusMessage": "Checking whether /statechart wrote a chart"
+          }
+        ]
+      }
     ]
   }
 }

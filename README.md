@@ -138,6 +138,7 @@ That is the main workflow. The other skills are there when poteto-mode needs the
 | `sharpen` | You want a prompt rewritten deeper, not bigger, before you send it. It returns the rewritten prompt and does not do the task. |
 | `ketchup-video` | You want the `/ketchup` catch-up as a short subtitled video of slides, with the calls waiting on you as text under it. |
 | `statechart` | Someone who owns the behavior needs to see it as a chart checked by a TLA+ model, with the shortest path to each state that breaks a rule. |
+| `statechart-diagram` | A `/statechart` chart should become a hand-drawn plate in pen and coloured pencil that a client or a team will keep. It runs by itself after `/statechart` writes a chart. |
 
 Plugin skills include `pstack:` in their name. In Claude Code, invoke a native skill such as `/pstack:architect`. In Codex, ask for the skill, such as `Use pstack:architect for this design.` See the [technical reference](docs/reference.md) for the full list.
 

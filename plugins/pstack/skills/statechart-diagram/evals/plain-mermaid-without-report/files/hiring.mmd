@@ -1,0 +1,15 @@
+stateDiagram-v2
+  s0: Applied
+  s1: Screening call
+  s2: Interviewing
+  s3: Offer sent
+  s4: Hired
+  s5: Declined
+  [*] --> s0
+  s0 --> s1: a recruiter calls
+  s1 --> s2: the panel is booked
+  s1 --> s5: not a fit
+  s2 --> s3: the panel says yes
+  s2 --> s5: the panel says no
+  s3 --> s4: the candidate signs
+  s3 --> s5: the candidate walks away [after 7 days]

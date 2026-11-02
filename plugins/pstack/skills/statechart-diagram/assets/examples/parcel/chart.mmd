@@ -1,0 +1,45 @@
+---
+title: "a parcel, from checkout to doorstep"
+---
+stateDiagram-v2
+  state "Legend" as legend {
+    lg0: Not yet paid for
+    lg1: Paid: the shop owes a parcel
+    lg2: Out of the shop's hands
+    lg3: Breaks NeverShipUnpaid
+    lg4: Path to the NeverShipUnpaid bug
+  }
+  class lg0 tan
+  class lg1 teal
+  class lg2 blue
+  class lg3 breaks
+  class lg4 bugPath
+  s0: In the basket
+  s1: Ordered, awaiting payment
+  s2: Paid
+  s3: Packed
+  s4: Handed to the courier
+  s5: Delivered
+  s6: Refunded
+  s7: Shipped before payment cleared
+  [*] --> s0
+  s0 --> s1: you check out
+  s1 --> s2: the card clears
+  s1 --> s0: you give up [after 24 hours]
+  s2 --> s3: the warehouse packs it
+  s3 --> s4: the courier scans it
+  s4 --> s5: it reaches your door
+  s2 --> s6: you cancel [before it is packed]
+  s1 --> s7: the warehouse packs it [the payment is still pending]
+  classDef breaks fill:#ffecee,stroke:#e72e3b,stroke-width:2.5px,color:#cd2834
+  class s0 tan
+  class s1 tan
+  class s2 teal
+  class s3 teal
+  class s4 blue
+  class s5 blue
+  class s6 tan
+  class s7 breaks
+  class s0 bugPath
+  class s1 bugPath
+  class s7 bugPath

@@ -161,6 +161,7 @@ The table uses the short upstream names. Claude Code exposes each native skill w
 | `/ketchup` | catch up on everything in this session since your last message (typed only) |
 | `/ketchup-video` | the same catch-up as a short subtitled video of slides, with the waiting calls as text under it (typed only) |
 | `/statechart` | check a TLA+ model and draw it as a Mermaid statechart, with the shortest path to each state that breaks a rule (typed only) |
+| `/statechart-diagram` | draw a `/statechart` chart as a hand-drawn plate in pen and coloured pencil; called by the `after-statechart` hook once `/statechart` writes a chart |
 | `/poteto-help` | find the skill, playbook, or principle for a question about pstack (typed only) |
 | `/in-your-own-words` | play back your goal and the problem before work starts (typed only) |
 | `/sharpen` | rewrite a prompt deeper, not bigger, before you send it; returns the rewritten prompt and does not do the task (typed only) |

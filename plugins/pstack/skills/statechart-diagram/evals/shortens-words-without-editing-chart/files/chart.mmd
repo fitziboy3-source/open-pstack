@@ -1,0 +1,29 @@
+---
+title: "an order at the counter"
+---
+stateDiagram-v2
+  state "Legend" as legend {
+    lg0: Nothing owed yet
+    lg1: The customer has paid
+  }
+  class lg0 tan
+  class lg1 teal
+  s0: Waiting in line
+  s1: Order taken by the cashier
+  s2: Paid at the register
+  s3: Being made by the barista
+  s4: Ready on the counter
+  s5: In the customer's hand
+  [*] --> s0
+  s0 --> s1: the customer tells the cashier what they would like to drink today
+  s1 --> s2: the customer pays by card or with cash at the register
+  s2 --> s3: the barista picks up the ticket and starts making the drink
+  s3 --> s4: the barista calls the customer's name and sets the cup down
+  s4 --> s3: the customer says it is the wrong drink and the barista remakes it
+  s4 --> s5: the customer picks the cup up from the counter
+  class s0 tan
+  class s1 tan
+  class s2 teal
+  class s3 teal
+  class s4 teal
+  class s5 teal
