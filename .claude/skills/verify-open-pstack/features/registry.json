@@ -20,9 +20,10 @@
     "unslop", "what-did-i-get-done", "why"
   ],
   "shared": [
-    "plugins/pstack/.claude-plugin/plugin.json", "plugins/pstack/.codex-plugin/plugin.json",
+    "plugins/pstack/.claude-plugin/plugin.json", "plugins/pstack/.codex-plugin/plugin.json", "plugins/pstack/.grok-plugin/plugin.json",
     ".claude-plugin/marketplace.json", ".agents/plugins/marketplace.json",
-    "plugins/pstack/agents/poteto-agent.md", "plugins/pstack/agents/comment-sicko.md", "plugins/pstack/hooks/**",
+    "plugins/pstack/agents/poteto-agent.md", "plugins/pstack/agents/comment-sicko.md",
+    "plugins/pstack/grok-agents/poteto-agent.md", "plugins/pstack/grok-agents/comment-sicko.md", "plugins/pstack/hooks/**",
     "plugins/pstack/skills/poteto-mode/references/**"
   ],
   "catalog": [
@@ -83,7 +84,8 @@
     "plugins/pstack/skills/statechart-diagram/assets/**", "plugins/pstack/skills/statechart-diagram/evals/**",
     "README.md", "REVIEW.md", "CHANGES.md", "LICENSE", "LICENSE.md", "UPSTREAM.md", "FORK.md", "TEAM-INSTALL.md",
     "NOTICE.md", "README-UPSTREAM.md", "LICENSE-cursor-team-kit", "LICENSE-superpowers",
-    ".gitignore", ".mergify.yml", "docs/**", "assets/**",
+    ".agents/run-these.md", ".agents/babysit-pr.md", ".agents/triage-backlog.md",
+    ".gitignore", ".mergify.yml", ".github/workflows/unfret-threads.yml", "docs/**", "assets/**",
     "plugins/pstack/skills/poteto-mode/scripts/bootstrap.test.ts",
     "plugins/pstack/skills/poteto-mode/scripts/check-plan.test.ts",
     "plugins/pstack/skills/poteto-mode/scripts/resolve-codex-transcript.test.ts", "scripts/release.py", "scripts/release_test.py", "scripts/sync-port.sh", "scripts/front-door.py", "scripts/cloud-setup.sh", "tests/cloud-setup-test.sh", "tests/sync-port-test.sh"

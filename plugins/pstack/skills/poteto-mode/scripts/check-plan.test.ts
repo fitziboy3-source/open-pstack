@@ -656,18 +656,26 @@ describe("check-plan fences", () => {
     const problems = withExample("```markdown `invalid`\n## Example only\n```\n");
     expect(problems.some((problem) => problem.includes(STRAY_HEADING))).toBe(true);
   });
+});
+
+describe("check-plan inline code", () => {
+  const PUNCTUATION = ["long dash", "curly quote", "mid-sentence colon"];
+  const punctuationOf = (source: string) =>
+    problemsOf(source).filter((problem) => PUNCTUATION.some((name) => problem.includes(name)));
 
   it("ignores prose punctuation inside matching multi-backtick code spans", () => {
     for (const count of [2, 3, 4]) {
       const delimiter = "`".repeat(count);
-      expect(withExample(`Use ${delimiter}echo \`x\`: “quoted” — example${delimiter}.\n`)).toEqual([]);
+      expect(punctuationOf(`Use ${delimiter}echo \`x\`: \u201cquoted\u201d \u2014 example${delimiter}.\n`)).toEqual([]);
     }
   });
 
   it("checks prose following a multi-backtick span and unmatched delimiters", () => {
-    const outside = withExample("Use ``echo `x`: y``. Bad: prose.\n");
-    expect(outside.some((problem) => problem.includes("mid-sentence colon"))).toBe(true);
-    const unmatched = withExample("Use ``unclosed: bad` here.\n");
-    expect(unmatched.some((problem) => problem.includes("mid-sentence colon"))).toBe(true);
+    expect(punctuationOf("Use ``echo `x`: y``. Bad: prose.\n")).toEqual([
+      "plan.md:1: mid-sentence colon",
+    ]);
+    expect(punctuationOf("Use ``unclosed: bad` here.\n")).toEqual([
+      "plan.md:1: mid-sentence colon",
+    ]);
   });
 });

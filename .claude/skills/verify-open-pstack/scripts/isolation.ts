@@ -1,5 +1,6 @@
 import { lstat, mkdir, readFile, readlink, realpath, rm, stat, symlink, writeFile } from 'node:fs/promises';
 import { isAbsolute, join, resolve } from 'node:path';
+import { grokHome } from './io.ts';
 
 function codexAuth(): string {
   return resolve(process.env.CODEX_HOME ?? join(process.env.HOME!, '.codex'), 'auth.json');
@@ -22,6 +23,15 @@ export async function linkCodexAuth(home: string): Promise<void> {
   if (!info?.isFile()) throw new Error('Codex verification requires existing file-based authentication (auth.json); keyring-only authentication is not supported');
   await mkdir(join(home, '.codex'), { recursive: true, mode: 0o700 });
   await symlink(source, join(await codexDirectory(home), 'auth.json'));
+}
+
+export async function linkMuseConfig(home: string): Promise<void> {
+  const source = join(process.env.XDG_CONFIG_HOME ?? join(process.env.HOME!, '.config'), 'muse');
+  const target = join(home, '.config/muse');
+  await mkdir(target, { recursive: true, mode: 0o700 });
+  for (const name of ['settings.json', 'auth.json']) {
+    if (await stat(join(source, name)).catch(() => undefined)) await symlink(join(source, name), join(target, name));
+  }
 }
 
 export async function assertCodexAuth(home: string): Promise<void> {
@@ -53,16 +63,15 @@ async function setupFile(path: string) {
 export async function snapshotSetup(): Promise<SetupSnapshot> {
   const directories = new Set([join(process.env.HOME!, '.claude'), join(process.env.HOME!, '.codex'),
     process.env.CLAUDE_CONFIG_DIR, process.env.CODEX_HOME].filter((directory): directory is string => !!directory).map(directory => resolve(directory)));
+  const paths = [...directories].flatMap(directory => ['pstack-models.md', 'CLAUDE.md', 'AGENTS.md'].map(name => join(directory, name)));
+  paths.push(join(resolve(grokHome(process.env)), 'rules/pstack-models.md'));
   const snapshot: SetupSnapshot = [];
-  for (const directory of directories) {
-    for (const name of ['pstack-models.md', 'CLAUDE.md', 'AGENTS.md']) {
-      const path = join(directory, name);
-      const link = (await lstat(path).catch(() => undefined))?.isSymbolicLink() ? await readlink(path) : undefined;
-      const target = link === undefined ? path : await realpath(path);
-      if (link !== undefined) snapshot.push({ path, link, target });
-      const info = await setupFile(target);
-      snapshot.push(info ? { path: target, bytes: await readFile(target), mode: info.mode & 0o777 } : { path: target });
-    }
+  for (const path of paths) {
+    const link = (await lstat(path).catch(() => undefined))?.isSymbolicLink() ? await readlink(path) : undefined;
+    const target = link === undefined ? path : await realpath(path);
+    if (link !== undefined) snapshot.push({ path, link, target });
+    const info = await setupFile(target);
+    snapshot.push(info ? { path: target, bytes: await readFile(target), mode: info.mode & 0o777 } : { path: target });
   }
   return snapshot;
 }
