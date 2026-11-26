@@ -39,7 +39,8 @@ for f in $(git diff --name-only --diff-filter=U); do
   if git merge-file -p -L fork -L "$prev" -L "$tag" "$tmp/ours" "$tmp/prev" "$tmp/tag" > "$f"; then git add -- "$f"; fi
   rm -rf "$tmp"
 done
-for f in .claude-plugin/marketplace.json plugins/pstack/.claude-plugin/plugin.json plugins/pstack/.codex-plugin/plugin.json; do
+for f in .claude-plugin/marketplace.json plugins/pstack/.claude-plugin/plugin.json plugins/pstack/.codex-plugin/plugin.json plugins/pstack/.grok-plugin/plugin.json; do
+  git cat-file -e "$tag:$f" 2>/dev/null || continue
   git show "$tag:$f" > "$f"
   inplace "$f" "s/(\"version\": \")[^\"]+(\")/\1$version\2/"; git add -- "$f"
 done

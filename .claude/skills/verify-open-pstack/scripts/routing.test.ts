@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { parse } from './cli.ts';
 import { routedSession } from './routing.ts';
-import { unroutable } from './harness.ts';
+import { routedHarness, unroutable } from './harness.ts';
 import { createFormal, maintainFormal } from '../features/formal.ts';
 import type { Session } from './io.ts';
 const roots:string[]=[];
@@ -39,4 +39,8 @@ test('routed eligibility follows the selected harness',()=>{
   expect(unroutable('skill-invocation:maintain-formal-verification-skill','codex',formal)).toBe(false);
   expect(unroutable('skill-invocation:poteto-mode','claude',[])).toBe(false);
   expect(unroutable('setup','codex',[])).toBe(true);
+});
+
+test('only Claude and Codex lanes need a routed native model',()=>{
+  expect(['claude','codex','grok','t3'].filter(h=>routedHarness(h as never))).toEqual(['claude','codex']);
 });

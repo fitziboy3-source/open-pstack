@@ -1,11 +1,12 @@
 import { createFormal, maintainFormal } from './formal.ts';
 import { Database } from 'bun:sqlite';
+import { createHash } from 'node:crypto';
 import { lstat, mkdir, readFile, realpath, rm, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { basename, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { sha256, type Command } from '../scripts/io.ts';
-import type { Harness, SessionRecord } from '../scripts/types.ts';
+import type { CoreHarness, Harness, SessionRecord } from '../scripts/types.ts';
 
 export interface Fixture {
   harness: Harness;
@@ -29,12 +30,12 @@ export interface Case {
 }
 
 export const CLAUDE_TOOLS = 'Skill,Read,Glob,Grep,Write,Edit,Bash,Agent,Task,TodoWrite';
-export const DEFAULT_ROLES: Record<Harness, string> = { claude: 'bug-fix', codex: 'judgment and prose' };
+export const DEFAULT_ROLES: Record<CoreHarness, string> = { claude: 'bug-fix', codex: 'judgment and prose' };
 export const ROUTE = /^([a-z][a-z0-9-]*):([A-Za-z0-9._/-]+)@([a-z]+)$/;
 const SETUP_DESCRIPTOR = 'claude:opus@high';
 const DESCRIPTOR = /\b[a-z][a-z0-9-]*:[A-Za-z0-9._/-]+@[a-z]+/g;
 const SHEET_HEADER = '# pstack model configuration\n\n';
-const SETTING = 'codex writer sandbox: ';
+const SETTING = 'codex writer sandbox: ', ANY_SETTING = /^[a-z][a-z0-9-]* writer sandbox: /;
 const FULL_ACCESS_SETTING = `${SETTING}full-access`, BOUNDED_SETTING = `${SETTING}bounded`;
 const WRITER_ROLE = 'feature, refactoring', WRITER_LANE = 'codex:gpt-6.1-sol@max';
 
@@ -54,7 +55,7 @@ export async function readCatalog(location: string): Promise<Catalog> {
   const kept = new Map(rows(section('Kept predecessors and normalization').split('\nRolling aliases:')[0]!).slice(1)
     .map(([provider, model, , current]): [string, string] => [`${provider}:${model}`, `${provider}:${current}`]));
   const [header = [], ...routes] = rows(section('Routes'));
-  const column = { claude: header.indexOf('Claude Code parent'), codex: header.indexOf('Codex parent') };
+  const column = { claude: header.indexOf('Claude Code parent'), codex: header.indexOf('Codex parent'), t3: -1, grok: -1 };
   if (!defaults.size || column.claude < 0 || column.codex < 0) throw new Error('catalog-unreadable');
   return { defaults, kept, route(harness, descriptor) {
     if (!descriptor.includes(':')) return 'native';
@@ -65,8 +66,8 @@ export async function readCatalog(location: string): Promise<Catalog> {
 }
 
 const sheetText = (lines: [string, string[]][]): string => SHEET_HEADER + lines.map(([role, lanes]) => `${role}: ${lanes.join(', ')}`).join('\n') + '\n';
-const roleLines = (text: string): string[] => text.split('\n').filter(line => /^[a-z][^:]*: \S/.test(line) && !line.startsWith(SETTING));
-const settingLines = (text: string): string[] => text.split('\n').filter(line => line.startsWith(SETTING));
+const roleLines = (text: string): string[] => text.split('\n').filter(line => /^[a-z][^:]*: \S/.test(line) && !ANY_SETTING.test(line));
+const settingLines = (text: string): string[] => text.split('\n').filter(line => ANY_SETTING.test(line));
 const sh = (text: string): string => `'${text.replaceAll("'", `'\\''`)}'`;
 
 const rules = (dir: string): string => `Work only inside ${dir}. Do not push, post, open, merge, or modify pull requests, issues, or remote branches, and do not write outside ${dir}. Do not edit any skill, plugin, or configuration file outside ${dir}. Do not ask questions: where the skill would ask, choose its documented default and continue. This is a headless session that ends at your first final reply and stops any background work still running, so run every command and subagent in the foreground, even where the skill says to use the background, and finish all work before you reply.`;
@@ -140,6 +141,8 @@ async function sumRepairRecognized(_record: SessionRecord, f: Fixture): Promise<
   return { assertions: ['recognized-repair:sum.mjs', 'test-unchanged:sum.test.mjs'], files: [join(f.dir, 'sum.mjs'), join(f.dir, 'sum.test.mjs')] };
 }
 
+const BROKEN_SUM = TASK['sum.mjs'];
+
 const overrides: Record<string, Case> = {
   'fix-ci': skillCase('fix-ci', 'There is no pull request or remote. The failing CI check is the local command `sh ci.sh` in $DIR. Fix it locally and do not push.', ciFixed),
   babysit: skillCase('babysit', 'The pull request is the local `main` branch of the repository at $DIR; there is no remote. Its one failing check is the local command `sh ci.sh`. Do exactly one babysit pass: fix the failing check locally, push nothing, change nothing remote, then stop instead of watching.', ciFixed),
@@ -153,6 +156,18 @@ const overrides: Record<string, Case> = {
     await writeFile(join(f.dir, 'sum.mjs'), 'export function sum(a, b) {\n  return a + b;\n}\n'); await git(f, 'commit', '-qam', 'wip');
     await writeFile(join(f.dir, 'README.md'), '# Fixture\n\nA tiny sum module.\n'); await git(f, 'commit', '-qam', 'fix typo');
     await writeFile(`${f.dir}.head`, await git(f, 'rev-parse', 'feature'));
+  }),
+  interrogate: skillCase('interrogate', 'The scope is the last commit of the repository at $DIR (`git diff HEAD~1`). Its intent: sum(a, b) returns the sum of a and b.', async (_record, f) => {
+    if (await readFile(join(f.dir, 'sum.mjs'), 'utf8') !== BROKEN_SUM) throw new Error('scope-modified:sum.mjs');
+    if ((await git(f, 'status', '--porcelain', '--untracked-files=no')).trim()) throw new Error('scope-checkout-modified');
+    return { assertions: ['scope-unmodified'], files: [join(f.dir, 'sum.mjs')] };
+  }, async f => {
+    await files(f.dir, { ...TASK, 'sum.mjs': 'export function sum(a, b) {\n  return a + b;\n}\n' });
+    await git(f, 'init', '-q', '-b', 'main');
+    await git(f, 'add', '.');
+    await git(f, 'commit', '-qm', 'Add sum module');
+    await writeFile(join(f.dir, 'sum.mjs'), BROKEN_SUM);
+    await git(f, 'commit', '-qam', 'Refactor sum');
   }),
   'automate-me': {
     id: 'invoke',
@@ -348,7 +363,85 @@ function codexWriter(optIn: boolean): Case {
   };
 }
 
-function runner(harness: Harness, routes: string[]): Case[] {
+const PROVIDER_WRITERS: [descriptor: string, optIn: boolean][] = [
+  ['devin:swe-2@medium', false], ['dsh:deepseek-flash@low', false], ['opencode:opencode/deepseek-v4.1-flash-free@low', true],
+  ['agy:gemini-3.8-flash@low', true], ['cursor:composer-2.5@default', true], ['amp:smart@default', true],
+];
+const MUSE = { provider: 'muse', model: 'muse-spark-1.3', effort: 'low' };
+
+async function laneWorktree(f: Fixture, name: string): Promise<string> {
+  const repo = join(f.dir, `${name}-repo`), lane = join(f.dir, `${name}-lane`);
+  await git(f, 'init', '-q', '-b', 'main', repo);
+  await git(f, '-C', repo, 'commit', '-q', '--allow-empty', '-m', 'init');
+  await git(f, '-C', repo, 'worktree', 'add', '-q', '-b', name, lane);
+  return lane;
+}
+
+function executedWriter(name: string, prompt: (f: Fixture, at: (file: string) => string, lane: string) => string, route: (f: Fixture) => Promise<{ provider: string; model: string; effort: string; optIn: boolean; sheet?: string }>): Case {
+  const at = (f: Fixture, file: string) => join(f.dir, `${name}.${file}`), lane = (f: Fixture) => join(f.dir, `${name}-lane`);
+  let nonce = '', expected: { provider: string; model: string; effort: string; optIn: boolean; sheet?: string } = { provider: '', model: '', effort: '', optIn: false };
+  return {
+    id: `${name}-writer`,
+    codexSandbox: 'danger-full-access',
+    async prepare(f) {
+      expected = await route(f);
+      nonce = crypto.randomUUID();
+      await laneWorktree(f, name);
+      if (expected.sheet !== undefined) await writeFile(at(f, 'sheet.md'), expected.sheet);
+      await writeFile(at(f, 'prompt.md'), `Using the shell, run exactly this command in the current directory, then reply DONE: python3 -c 'import hashlib; print(hashlib.sha256(b"${nonce}").hexdigest())' > result.txt\n`);
+    },
+    prompt: f => prompt(f, file => at(f, file), lane(f)),
+    async assert(record, f) {
+      if (!record.commands.some(c => c.includes('pstack-runner'))) throw new Error('runner-not-run');
+      const receipt = JSON.parse(await readFile(at(f, 'receipt.json'), 'utf8')), sandbox = expected.optIn ? 'full-access' : 'bounded';
+      if (receipt.status !== 'complete') throw new Error(`receipt-status:${receipt.status}`);
+      if (receipt.provider !== expected.provider || receipt.model !== expected.model || receipt.effort !== expected.effort || receipt.mode !== 'isolated-write' || receipt.cwd !== lane(f)) throw new Error('receipt-route-mismatch');
+      if (receipt.outputPath !== at(f, 'output.md') || !(Date.parse(receipt.startedAt) >= record.started)) throw new Error('receipt-not-this-session');
+      if (receipt.writerSandbox !== sandbox) throw new Error(`writer-sandbox:${receipt.writerSandbox}`);
+      const path = join(lane(f), 'result.txt'), effect = await written(record, path);
+      if ((await readFile(path, 'utf8')).trim() !== createHash('sha256').update(nonce).digest('hex')) throw new Error(`${name}-effect-mismatch`);
+      return { assertions: ['runner-ran', 'receipt-complete', `writer-sandbox:${sandbox}`, effect, 'executed'], files: [at(f, 'receipt.json'), path] };
+    },
+  };
+}
+
+function providerWriter(descriptor: string, optIn: boolean): Case {
+  const [, provider = '', model = '', effort = ''] = ROUTE.exec(descriptor)!;
+  return executedWriter(provider, (f, at, lane) => `${invoke(f.harness, 'poteto-mode', `Do no engineering work. For this task the pstack model sheet is ${at('sheet.md')}; use it in place of any configured sheet. Dispatch exactly one lane and nothing else: the first descriptor of its "${WRITER_ROLE}" role as an isolated-write writer, on the route and with the launcher arguments provider dispatch gives this parent. Use the prompt file ${at('prompt.md')}, the dedicated worktree ${lane} as its cwd, the output ${at('output.md')} and the receipt ${at('receipt.json')}, and wait for the lane to exit.`)} ${rules(f.dir)}`, async f => {
+    const installed = await readCatalog(f.location);
+    if (installed.route(f.harness, descriptor) !== 'external') throw new Error(`runner-route-not-external:${descriptor}`);
+    const sheet = sheetText([...installed.defaults].map(([role, lanes]) => [role, role === WRITER_ROLE ? [descriptor] : lanes])) + (optIn ? `${provider} writer sandbox: full-access\n` : '');
+    return { provider, model, effort, optIn, sheet };
+  });
+}
+
+const launcherArgs = (f: Fixture, args: string): string => `${invoke(f.harness, 'poteto-mode', `Dispatch exactly one external lane and nothing else. Run the installed launcher ${join(f.location, 'skills/poteto-mode/scripts/runner/pstack-runner')} with these arguments and wait for it to exit: ${args}`)}. ${rules(f.dir)}`;
+
+const museWriter = executedWriter('muse', (f, at, lane) => launcherArgs(f, `--parent ${f.harness} --provider muse --model ${MUSE.model} --effort ${MUSE.effort} --mode isolated-write --writer-sandbox full-access --prompt ${at('prompt.md')} --cwd ${lane} --output ${at('output.md')} --receipt ${at('receipt.json')}`),
+  async () => ({ ...MUSE, optIn: true }));
+
+const museReader: Case = {
+  id: 'muse-reader',
+  codexSandbox: 'danger-full-access',
+  async prepare(f) {
+    await mkdir(join(f.dir, 'muse-read'));
+    await writeFile(join(f.dir, 'muse-read/notes.txt'), `The marker is ${crypto.randomUUID()}.\n`);
+    await writeFile(join(f.dir, 'muse-read.prompt.md'), 'Read notes.txt in the current directory and reply with only the marker it names.\n');
+  },
+  prompt: f => launcherArgs(f, `--parent ${f.harness} --provider muse --model ${MUSE.model} --effort ${MUSE.effort} --mode read-only --prompt ${join(f.dir, 'muse-read.prompt.md')} --cwd ${join(f.dir, 'muse-read')} --output ${join(f.dir, 'muse-read.output.md')} --receipt ${join(f.dir, 'muse-read.receipt.json')}`),
+  async assert(record, f) {
+    if (!record.commands.some(c => c.includes('pstack-runner'))) throw new Error('runner-not-run');
+    const receipt = JSON.parse(await readFile(join(f.dir, 'muse-read.receipt.json'), 'utf8'));
+    if (receipt.status !== 'complete') throw new Error(`receipt-status:${receipt.status}`);
+    if (receipt.provider !== 'muse' || receipt.model !== MUSE.model || receipt.mode !== 'read-only' || receipt.modelEvidence !== 'pinned-argv') throw new Error('receipt-route-mismatch');
+    if (!(Date.parse(receipt.startedAt) >= record.started)) throw new Error('receipt-not-this-session');
+    const marker = /The marker is (\S+)\./.exec(await readFile(join(f.dir, 'muse-read/notes.txt'), 'utf8'))![1]!;
+    if (!(await readFile(join(f.dir, 'muse-read.output.md'), 'utf8')).includes(marker)) throw new Error('muse-reader-marker-missing');
+    return { assertions: ['runner-ran', 'receipt-complete', 'marker-read'], files: [join(f.dir, 'muse-read.receipt.json'), join(f.dir, 'muse-read.output.md')] };
+  },
+};
+
+function runner(harness: CoreHarness, routes: string[]): Case[] {
   const chosen = routes.filter(route => !route.startsWith(`${harness}:`));
   const cases = (chosen.length ? chosen : ['']).map((fixed, index): Case => {
     let route = fixed, provider = '', model = '', effort = '';
@@ -391,7 +484,7 @@ const setup: Case[] = [{
     const sheet = join(f.configHome, 'pstack-models.md'), assertions = [loaded(record, 'pstack:setup-pstack'), await written(record, sheet)];
     const text = await readFile(sheet, 'utf8'), descriptors = text.match(DESCRIPTOR) ?? [];
     if (!descriptors.length || descriptors.some(d => d !== SETUP_DESCRIPTOR)) throw new Error('sheet-descriptors-mismatch');
-    if (!Bun.deepEquals(settingLines(text), [FULL_ACCESS_SETTING])) throw new Error('setting-not-full-access');
+    if (!Bun.deepEquals(settingLines(text).filter(line => line.startsWith(SETTING)), [FULL_ACCESS_SETTING])) throw new Error('setting-not-full-access');
     return { assertions: [...assertions, `sheet:${SETUP_DESCRIPTOR}`, `setting:${FULL_ACCESS_SETTING}`], files: [sheet] };
   },
 }, {
@@ -500,7 +593,7 @@ function newFamilies(): Case {
   };
 }
 
-const READ_ONLY_ROLE = 'how explorer', READ_ONLY_LANE = 'devin:swe-2@max';
+const READ_ONLY_ROLE = 'how explorer', READ_ONLY_LANE = 'opencode:opencode/deepseek-v4.1-flash-free@max';
 function readOnlyProvider(): Case {
   let expected: string[] = [];
   return {
@@ -527,7 +620,7 @@ function readOnlyProvider(): Case {
   };
 }
 
-const REFUSED_ROLE = 'bug-fix';
+const REFUSED_ROLE = 'bug-fix', REFUSED_LANE = 'opencode:opencode/deepseek-v4.1-flash-free@max';
 function writerRefusal(): Case {
   let prepared = '';
   const refusal = (f: Fixture) => join(f.dir, 'refusal.txt');
@@ -538,19 +631,19 @@ function writerRefusal(): Case {
     async prepare(f) {
       const roles = [...(await readCatalog(f.location)).defaults];
       if (!roles.some(([role]) => role === REFUSED_ROLE)) throw new Error(`catalog-role-missing:${REFUSED_ROLE}`);
-      prepared = sheetText(roles.map(([role, lanes]) => [role, role === REFUSED_ROLE ? [READ_ONLY_LANE] : lanes]));
+      prepared = sheetText(roles.map(([role, lanes]) => [role, role === REFUSED_ROLE ? [REFUSED_LANE] : lanes]));
       await writeFile(join(f.configHome, 'pstack-models.md'), prepared);
       if (f.harness === 'codex') await rm(join(f.configHome, 'AGENTS.md'), { force: true });
       await rm(refusal(f), { force: true });
     },
-    prompt: f => `${invoke(f.harness, 'setup-pstack', `Use these answers and ask nothing else. Keep every role assignment and every family's current effort. If setup refuses a role assignment, write only setup's refusal message to ${refusal(f)} and stop without changing any configuration.`)} Do not push, post, or contact GitHub.`,
+    prompt: f => `${invoke(f.harness, 'setup-pstack', `Use these answers and ask nothing else. Keep every role assignment and every family's current effort. Decline every writer sandbox opt-in. If setup refuses a role assignment, write only setup's refusal message to ${refusal(f)} and stop without changing any configuration.`)} Do not push, post, or contact GitHub.`,
     async assert(record, f) {
       const assertions = [loaded(record, 'pstack:setup-pstack')];
       if (await readFile(join(f.configHome, 'pstack-models.md'), 'utf8') !== prepared) throw new Error('writer-refusal-sheet-changed');
       if (f.harness === 'codex' && await lstat(join(f.configHome, 'AGENTS.md')).then(() => true, () => false)) throw new Error('writer-refusal-integration-written');
       const text = await readFile(refusal(f), 'utf8').catch(() => '');
-      if (!text.includes(REFUSED_ROLE) || !text.toLowerCase().includes('devin')) throw new Error('writer-refusal-missing');
-      return { assertions: [...assertions, `refused:${REFUSED_ROLE}:${READ_ONLY_LANE}`], files: [refusal(f)] };
+      if (!text.includes(REFUSED_ROLE) || !text.toLowerCase().includes('opencode')) throw new Error('writer-refusal-missing');
+      return { assertions: [...assertions, `refused:${REFUSED_ROLE}:${REFUSED_LANE}`], files: [refusal(f)] };
     },
   };
 }
@@ -683,7 +776,117 @@ const startupHook: Case = {
   },
 };
 
+const T3_ROLE = 'bug-fix', T3_LANE = { provider: 'claudeAgent', model: 'claude-haiku-5-5', effort: 'low' };
+const t3Dispatch: Case = {
+  id: 'dispatch',
+  async prepare(f) {
+    await files(f.dir, { 'marker.txt': `${crypto.randomUUID()}\n`, 'pstack-models.md': sheetText([[T3_ROLE, [`claude:${T3_LANE.model}@${T3_LANE.effort}`]]]) });
+  },
+  prompt: f => `${invoke(f.harness, 'poteto-mode', `Dispatch exactly one lane for the ${T3_ROLE} role and nothing else. For this task the pstack model sheet is ${join(f.dir, 'pstack-models.md')}; use it in place of any configured sheet. The lane's whole task: "Read ${join(f.dir, 'marker.txt')} and reply with its exact contents. Do not edit files." Wait for the lane's result, then reply with it.`)} ${rules(f.dir)}`,
+  async assert(record, f) {
+    if (!record.skills.includes(join(f.location, 'skills/poteto-mode'))) throw new Error('skill-not-loaded-from-candidate:pstack:poteto-mode');
+    const calls = record.tools.filter(t => t.name === 'mcp__t3-code__delegate_task' && !t.failed);
+    if (calls.length !== 1) throw new Error(`delegate-task-calls:${calls.length}`);
+    const { input, result } = calls[0]!, target = input.target ?? {};
+    if (target.providerInstanceId !== T3_LANE.provider || target.model !== T3_LANE.model || !Bun.deepEquals(target.options, { effort: T3_LANE.effort })) throw new Error('delegate-request-mismatch');
+    const response = parseJson(result) as Record<string, any> | undefined;
+    if (response?.providerInstanceId !== T3_LANE.provider || response.model !== T3_LANE.model ||
+        !Bun.deepEquals(response.options, [{ id: 'effort', value: T3_LANE.effort }])) throw new Error('delegate-response-mismatch');
+    if (response.status !== 'completed' || response.workState !== 'result_available' || response.hasPendingChildRuns !== false ||
+        response.hasPendingQuestion !== false || response.pendingApproval !== null) throw new Error(`delegate-not-settled:${response.status}`);
+    const marker = (await readFile(join(f.dir, 'marker.txt'), 'utf8')).trim();
+    if (typeof response.summary !== 'string' || !response.summary.includes(marker)) throw new Error('marker-missing');
+    const exchange = join(f.dir, 'delegate-task.json');
+    await writeFile(exchange, JSON.stringify({ request: input, response }, null, 2));
+    return { assertions: ['skill-loaded-from-candidate', 'delegate-request', 'delegate-settled', 'marker-returned'], files: [exchange, join(f.dir, 'pstack-models.md')] };
+  },
+};
+
+const GROK_LANES = [
+  { role: 'why investigators, synthesizer', descriptor: 'inherit-parent' },
+  { role: 'how explorer', descriptor: 'grok:grok-4.7@low', provider: 'grok', model: 'grok-4.7', effort: 'low', proof: 'provider-report' },
+  { role: 'how explainer', descriptor: 'codex:gpt-6-luna@low', provider: 'codex', model: 'gpt-6-luna', effort: 'low', proof: 'pinned-argv' },
+] as const;
+const GROK_AGENTS = ['pstack:poteto-agent', 'pstack:comment-sicko'];
+
+export function grokAgents(agents: string[] | undefined): string {
+  if (!agents || GROK_AGENTS.some(agent => !agents.includes(agent))) throw new Error('grok-model-free-agents-missing');
+  const lane = agents.find(agent => agent.startsWith('pstack:pstack-'));
+  if (lane) throw new Error(`grok-claude-lane-agent-offered:${lane}`);
+  return 'agents:model-free-only';
+}
+
+export function grokReceipt(receipt: Record<string, any>, lane: { provider: string; model: string; effort: string; proof: 'provider-report' | 'pinned-argv' }, output: string, started: number): void {
+  if (receipt.status !== 'complete') throw new Error(`receipt-status:${receipt.status}`);
+  if (receipt.parent !== 'grok' || receipt.provider !== lane.provider || receipt.model !== lane.model || receipt.effort !== lane.effort || receipt.mode !== 'read-only') throw new Error(`receipt-route-mismatch:${lane.provider}`);
+  const proved = lane.proof === 'provider-report'
+    ? receipt.modelVerified === true && receipt.modelEvidence === 'provider-report'
+    : receipt.modelVerified === false && receipt.modelEvidence === 'pinned-argv' && receipt.reportedModel === null;
+  if (!proved) throw new Error(`receipt-model-unverified:${lane.provider}`);
+  if (receipt.outputPath !== output || !(Date.parse(receipt.startedAt) >= started)) throw new Error(`receipt-not-this-session:${lane.provider}`);
+}
+
+async function grokSkill(record: SessionRecord, f: Fixture, skill: string): Promise<string> {
+  if (!record.skills.includes(await realpath(join(f.location, 'skills', skill)))) throw new Error(`skill-not-loaded-from-candidate:pstack:${skill}`);
+  return 'skill-loaded-from-candidate';
+}
+
+const grokDispatch: Case = {
+  id: 'dispatch',
+  async prepare(f) {
+    await files(f.dir, { 'pstack-models.md': sheetText(GROK_LANES.map(lane => [lane.role, [lane.descriptor]])),
+      ...Object.fromEntries(GROK_LANES.map((_, index) => [`marker-${index + 1}.txt`, `${crypto.randomUUID()}\n`])) });
+  },
+  prompt: f => `${invoke(f.harness, 'poteto-mode', `Do no engineering work. For this task the pstack model sheet is ${join(f.dir, 'pstack-models.md')}; use it in place of any configured sheet. Dispatch exactly one read-only lane for each of these roles, in this order, and nothing else: ${GROK_LANES.map(lane => JSON.stringify(lane.role)).join(', ')}. Lane N's whole task: "Read ${join(f.dir, 'marker-N.txt')} and reply with its exact contents. Do not edit files." A lane that needs an output or receipt path uses ${join(f.dir, 'lane-N.output.md')} and ${join(f.dir, 'lane-N.receipt.json')}. Wait for every lane to finish, then reply with each lane's result.`)} ${rules(f.dir)}`,
+  async assert(record, f) {
+    const assertions = [await grokSkill(record, f, 'poteto-mode'), grokAgents(record.agents)];
+    const markers = await Promise.all(GROK_LANES.map(async (_, index) => (await readFile(join(f.dir, `marker-${index + 1}.txt`), 'utf8')).trim()));
+    const spawned = record.tools.filter(t => t.name === 'spawn_subagent' && !t.failed);
+    if (spawned.length !== 1 || spawned[0]!.input.subagent_type !== 'pstack:poteto-agent') throw new Error(`native-lanes:${spawned.map(t => t.input.subagent_type).join(',')}`);
+    const native = spawned[0]!, completed = parseJson(native.result) as Record<string, any> | undefined;
+    if (completed?.type !== 'SubagentCompleted' || completed.subagent_type !== 'pstack:poteto-agent' || !String(completed.output).includes(markers[0]!)) throw new Error('native-lane-result-mismatch');
+    if (!record.tools.some(t => t.parent === native.id)) throw new Error('native-child-did-not-run');
+    if (await lstat(join(f.dir, 'lane-1.receipt.json')).catch(() => undefined)) throw new Error('native-lane-used-runner');
+    assertions.push('native:pstack:poteto-agent');
+    const paths = [join(f.dir, 'pstack-models.md')];
+    for (const [index, lane] of GROK_LANES.entries()) {
+      if (!('provider' in lane)) continue;
+      const at = (name: string) => join(f.dir, `lane-${index + 1}.${name}`);
+      if (!record.commands.some(c => c.includes('pstack-runner') && c.includes('--parent grok') && c.includes(`--provider ${lane.provider}`))) throw new Error(`runner-not-run:${lane.provider}`);
+      grokReceipt(JSON.parse(await readFile(at('receipt.json'), 'utf8')), lane, at('output.md'), record.started);
+      if (!(await readFile(at('output.md'), 'utf8')).includes(markers[index]!)) throw new Error(`marker-missing:${lane.provider}`);
+      assertions.push(`runner:${lane.descriptor}`);
+      paths.push(at('receipt.json'), at('output.md'));
+    }
+    const exchange = join(f.dir, 'native-lane.json');
+    await writeFile(exchange, JSON.stringify({ request: native.input, response: completed }, null, 2));
+    return { assertions: [...assertions, 'markers-returned'], files: [exchange, ...paths] };
+  },
+};
+
+const GROK_SETUP_DESCRIPTOR = 'grok:grok-4.7@low';
+const grokSetup: Case = {
+  id: 'configure',
+  prompt: f => `${invoke(f.harness, 'setup-pstack', `Use these answers and ask nothing else. Role assignments: change every role assigned to a model-matrix family to the Grok family, and keep inherit-parent and auto roles unchanged. Grok requested effort: low. Decline every writer sandbox opt-in. I confirm every write. Write the setup report to ${join(f.dir, 'result.md')}.`)} Do not push, post, or contact GitHub.`,
+  async assert(record, f) {
+    const sheet = join(f.configHome, 'rules/pstack-models.md'), assertions = [await grokSkill(record, f, 'setup-pstack'), await written(record, sheet)];
+    const text = await readFile(sheet, 'utf8'), descriptors = text.match(DESCRIPTOR) ?? [];
+    if (!descriptors.length || descriptors.some(d => d !== GROK_SETUP_DESCRIPTOR)) throw new Error('sheet-descriptors-mismatch');
+    if (settingLines(text).some(line => line.endsWith(': full-access'))) throw new Error('setting-full-access');
+    return { assertions: [...assertions, `sheet:${GROK_SETUP_DESCRIPTOR}`, 'no-full-access'], files: [sheet] };
+  },
+};
+
 export function recipe(feature: string, harness: Harness, routes: string[] = []): Case[] {
+  if (harness === 't3') {
+    if (feature === 'dispatch') return [t3Dispatch];
+    throw new Error(`missing-recipe:${harness}/${feature}`);
+  }
+  if (harness === 'grok') {
+    if (feature === 'dispatch') return [grokDispatch];
+    if (feature === 'setup') return [grokSetup];
+    throw new Error(`missing-recipe:${harness}/${feature}`);
+  }
   if (feature === 'skill-invocation:create-formal-verification-skill') return [createFormal()];
   if (feature === 'skill-invocation:maintain-formal-verification-skill') return [maintainFormal()];
   if (feature === 'skill-invocation:poteto-mode') return [routingOnly];
@@ -691,6 +894,11 @@ export function recipe(feature: string, harness: Harness, routes: string[] = [])
   if (feature === 'project-skill') return [projectSkill];
   if (feature === 'hook:startup') return [startupHook];
   if (feature === 'runner') return runner(harness, routes);
+  const writers = /^writers(?::([a-z]+))?$/.exec(feature);
+  if (writers) {
+    const cases = [...PROVIDER_WRITERS.map(([descriptor, optIn]) => providerWriter(descriptor, optIn)), museWriter, museReader];
+    return writers[1] === undefined ? cases : cases.filter(c => c.id.startsWith(`${writers[1]}-`));
+  }
   if (feature === 'setup' || feature === 'skill-invocation:setup-pstack') return setup;
   if (feature === 'catalog') return catalog(harness);
   if (feature === 'shipped-tools') return [shippedTools];

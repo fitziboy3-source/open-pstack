@@ -4,23 +4,24 @@
 [![Latest release](https://img.shields.io/github/v/release/ericlitman/open-pstack)](https://github.com/ericlitman/open-pstack/releases/latest)
 [![MIT license](https://img.shields.io/github/license/ericlitman/open-pstack)](LICENSE)
 
-**Open Pstack brings [Lauren Tan (@poteto)](https://x.com/poteto)'s [pstack](https://github.com/cursor/plugins/tree/main/pstack) to Claude Code and Codex.** Its job is to stay as close to her original work as possible while translating the parts that depend on Cursor.
+**Open Pstack brings [Lauren Tan (@poteto)](https://x.com/poteto)'s [pstack](https://github.com/cursor/plugins/tree/main/pstack) to Claude Code, Codex and Grok, and to T3 Code running Claude Code or Codex.** Its job is to stay as close to her original work as possible while translating the parts that depend on Cursor.
 
 Lauren built pstack from the skills she uses to ship code at Cursor. In a [55-minute interview with Denis Labelle](https://x.com/DenisLabelle/status/2091337807939706928), she says that she shipped 1,000 pull requests in one month after steadily improving how her agents work and verify their results.
 
 > If you want to go fast, go deep first.
 
-Open Pstack is an unofficial community project that makes pstack work in Claude Code and Codex. If Cursor is your main coding environment, use [Lauren's original pstack](https://github.com/cursor/plugins/tree/main/pstack). If Claude Code or Codex is your main coding environment, use this repository.
+Open Pstack is an unofficial community project. In Cursor, use [Lauren's original pstack](https://github.com/cursor/plugins/tree/main/pstack). In Codex, use Open Pstack. In Claude Code, you have two choices. Lauren's `pstack@cursor-plugins` has Claude models only and runs the Grok and GPT roles on the session's Claude model. Open Pstack also runs in Codex, and runs other providers' models through their own command-line tools. Install only one of the two in Claude Code, because both use the `pstack:` prefix.
 
 ## What Open Pstack adds
 
-Beyond translating pstack for Claude Code and Codex, Open Pstack adds:
+Compared with Lauren's pstack, Open Pstack adds:
 
 - **A model and provider registry.** Models, efforts and providers live in one typed [registry](plugins/pstack/skills/poteto-mode/scripts/runner/registry/). The [model catalog](plugins/pstack/skills/poteto-mode/references/model-catalog.md) and the Claude-native agent files are generated from it, and the skills point at the catalog's role defaults instead of naming models. A new model is one registry entry. A new command-line provider is one adapter module and one line in the provider list. See the [design](docs/plans/2026-10-11-model-provider-registry.md).
-- **One skill tree for Claude Code and Codex.** Both apps read the same skills, and one [reference](plugins/pstack/skills/poteto-mode/references/codex-tools.md) maps how each app starts them. See [Claude Code and Codex](#claude-code-and-codex) below.
-- **Models from other providers.** Claude, Codex and Grok each run through their own signed-in command-line tool, started by one [runner](plugins/pstack/skills/poteto-mode/references/provider-dispatch.md). Each run leaves a receipt with the exact model flags and, where the provider reports it, the model that answered. Grok gets only an allowlisted environment, and a Claude lane that writes files runs in Claude Code's Bash sandbox, with writes to the shared Git directory denied. A model that cannot run fails visibly; the runner never switches to a weaker model.
-- **A checked model sheet.** [`setup-pstack`](plugins/pstack/skills/setup-pstack/SKILL.md) records each role as `provider:model@effort`, asks for one effort per model family, and runs each chosen model once before it saves anything.
-- **Three-model panels.** Review and comparison skills default to Opus, Sol and Grok. Upstream pstack moved to two models; Open Pstack keeps three ([UPSTREAM.md](UPSTREAM.md)).
+- **One skill tree for Claude Code and Codex.** Both apps read the same skills, and one [reference](plugins/pstack/skills/poteto-mode/references/codex-tools.md) maps how each app starts them. Lauren's pstack does not run in Codex. See [Claude Code, Codex and Grok](#claude-code-codex-and-grok) below.
+- **Models from other providers.** Claude Code and Codex hand work to other providers' models through each provider's own command-line tool, started by one [runner](plugins/pstack/skills/poteto-mode/references/provider-dispatch.md). The runner supports nine providers. Claude, Codex and Grok run lanes that read or write files. Devin, DeepSeek Harness, Antigravity, OpenCode, Amp and Cursor CLI run read-only lanes. The model catalog's [routes table](plugins/pstack/skills/poteto-mode/references/model-catalog.md#routes) lists how each one starts. A Grok parent runs `inherit-parent` and `auto` with `spawn_subagent`, and every explicit descriptor, including Grok models, through the runner with `--parent grok`. Each run leaves a receipt with the exact model flags and, where the provider reports it, the model that answered. Every provider except Claude and Codex gets only an allowlisted environment. A Claude lane that writes files runs in Claude Code's Bash sandbox, with writes to the shared Git directory denied. A model that cannot run fails visibly; the runner never switches to a weaker model.
+- **Runs inside T3 Code.** In [T3 Code](plugins/pstack/skills/poteto-mode/references/provider-dispatch.md#t3-host), pstack keeps each role's model and effort. T3 starts each lane whose provider it offers, and the runner starts the rest.
+- **A checked model sheet.** [`setup-pstack`](plugins/pstack/skills/setup-pstack/SKILL.md) records each role as `provider:model@effort`, asks for one effort per model family, and probes each chosen model before it saves anything. A rerun that changes nothing keeps the sheet without asking again.
+- **Three-model panels.** `arena`, `architect` and `interrogate` default to Opus, Sol and Grok. Lauren's pstack defaults to Opus 5.5 and Grok; Open Pstack keeps three ([UPSTREAM.md](UPSTREAM.md)).
 - **Changes tested where they run.** Before a change merges, the exact candidate is installed in each app it affects and the changed behavior is tested there. The pull request records the result ([AGENTS.md](AGENTS.md)).
 
 ## What pstack does
@@ -43,7 +44,7 @@ pstack does not ask you to trust an agent on day one. It helps the agent leave e
 
 ## Install
 
-You need a current Claude Code or Codex installation. For the full three-model review, install and sign in to the Claude Code, Codex, and Grok command-line tools. [Bun](https://bun.sh) runs the small local tool that starts models outside the app you are using. You can still use the core workflows with fewer models.
+You need a current Claude Code or Codex installation. For the default three-model review, install and authenticate the Claude Code, Codex, and Grok command-line tools. [Bun](https://bun.sh) runs the small local tool that starts models outside the app you are using. You can still use the core workflows with fewer models. You need another provider's command-line tool only when your model sheet assigns that provider.
 
 ### Claude Code
 
@@ -54,6 +55,8 @@ Run these commands inside Claude Code:
 /plugin install pstack@open-pstack
 /reload-plugins
 ```
+
+Claude Code leaves auto-update off for third-party marketplaces, so Open Pstack stays on the version you installed. To turn it on, run `/plugin`, open the **Marketplaces** tab, select `open-pstack`, and choose **Enable auto-update**. To update once by hand, run `claude plugin update pstack@open-pstack`.
 
 ### Codex
 
@@ -91,11 +94,9 @@ In Codex, ask:
 Use pstack:setup-pstack to configure pstack.
 ```
 
-Setup checks the models you can actually run, shows how each one will start, and asks before saving the choices. The default review panel uses Opus, Sol, and Grok, and setup probes only the models your roles use. Fable, Sonnet, Luna, Haiku 5.5 and an exact Opus pin remain available.
+Setup checks the role assignments, shows how each model will start, and probes each assigned model before saving. The default review panel uses Opus, Sol and Grok. The [model catalog](plugins/pstack/skills/poteto-mode/references/model-catalog.md) lists every other choice.
 
-An older model sheet starts using the rolling aliases in memory as soon as this release is installed. Run setup once after updating to persist that migration. It replaces versioned entries of a rolling-alias family, such as Opus, while preserving every role assignment and effort selection. A registered exact pin is kept.
-
-A model sheet from an earlier release keeps its panel. To take the new defaults, delete those role lines and run setup again; setup fills missing roles from the defaults. An entry for a model that a later release replaced keeps running until the next setup run asks you to replace it.
+The first run asks before saving. A rerun also asks when you name a change, or when it finds an invalid sheet or a choice only you can make. A failed probe stops setup before it saves anything. A rerun that changes nothing prints what it kept and saves without asking. After its smoke test, setup offers to generate a verification skill when the project has no way to drive the real app for proof, and a formal verification skill when it has none. A rerun that changes nothing only mentions each offer.
 
 ### 2. Use poteto-mode
 
@@ -136,6 +137,7 @@ That is the main workflow. The other skills are there when poteto-mode needs the
 | `poteto-help` | You want to know which skill, playbook, or principle fits a question. |
 | `in-your-own-words` | You want the agent to restate your goal and the problem before it starts. |
 | `sharpen` | You want a prompt rewritten deeper, not bigger, before you send it. It returns the rewritten prompt and does not do the task. |
+| `reframe` | You can't yet name what you are building. It teaches the expert words for it, checks every source it cites, and rewrites your description with them. |
 | `ketchup-video` | You want the `/ketchup` catch-up as a short subtitled video of slides, with the calls waiting on you as text under it. |
 | `statechart` | Someone who owns the behavior needs to see it as a chart checked by a TLA+ model, with the shortest path to each state that breaks a rule. |
 | `statechart-diagram` | A `/statechart` chart should become a hand-drawn plate in pen and coloured pencil that a client or a team will keep. It runs by itself after `/statechart` writes a chart. |
@@ -144,22 +146,22 @@ Plugin skills include `pstack:` in their name. In Claude Code, invoke a native s
 
 ## Models and token use
 
-Some pstack workflows use one model. Skills such as `architect`, `arena`, and `interrogate` can run several models in parallel. Each model run uses the subscription and token allowance of its own command-line tool.
+Some pstack workflows use one model. Skills such as `architect`, `arena`, and `interrogate` can run several models in parallel. Each model run uses the account and allowance of the tool that runs it.
 
-`setup-pstack` lets you choose the models, one requested effort per model family you assign, and how many run in parallel. A model from the app you are using runs inside that app. Other models run through their own command-line tools. Open Pstack does not quietly replace a failed model with a weaker one.
+`setup-pstack` lets you choose the models, one requested effort per model family you assign, and how many run in parallel. A model from the app you are using runs inside that app. Other models run through their own command-line tools, as the [routes table](plugins/pstack/skills/poteto-mode/references/model-catalog.md#routes) shows. Open Pstack does not quietly replace a failed model with a weaker one.
 
-## Claude Code and Codex
+## Claude Code, Codex and Grok
 
 Both apps read the same pstack skills. Only the way they start those skills and models is different.
 
-| | Claude Code | Codex |
-| --- | --- | --- |
-| Start poteto-mode | Claude loads a small startup instruction that can route non-trivial work into it. You can also run `/pstack:poteto-mode` yourself. | Ask for `pstack:poteto-mode` by name. Codex does not load the Claude startup instruction. |
-| Runs inside the app | Claude models stay inside Claude Code. | The Sol model stays inside Codex. |
-| Other models | Codex and Grok run through their signed-in command-line tools. | Claude and Grok run through their signed-in command-line tools. |
-| Skills and workflows | Shared with Codex. | Shared with Claude Code. |
+| | Claude Code | Codex | Grok |
+| --- | --- | --- | --- |
+| Start poteto-mode | Claude loads a small startup instruction that can route non-trivial work into it. You can also run `/pstack:poteto-mode` yourself. | Ask for `pstack:poteto-mode` by name. Codex does not load the Claude startup instruction. | Run `/pstack:poteto-mode` by name. The Claude startup instruction does not fire in Grok. |
+| Runs inside the app | Claude models stay inside Claude Code. | Codex models, such as Sol, stay inside Codex. | `inherit-parent` and `auto` stay inside Grok. |
+| Other models | Codex, Grok and the other external providers run through their command-line tools ([routes](plugins/pstack/skills/poteto-mode/references/model-catalog.md#routes)). | Claude, Grok and the other external providers run through their command-line tools ([routes](plugins/pstack/skills/poteto-mode/references/model-catalog.md#routes)). | Every explicit model, including Grok models, runs through its command-line tool ([routes](plugins/pstack/skills/poteto-mode/references/model-catalog.md#routes)). |
+| Skills and workflows | Shared with Codex and Grok. | Shared with Claude Code and Grok. | Shared with Claude Code and Codex. |
 
-Grok can take part in a multi-model review. You cannot use Grok as the main app running pstack.
+The other providers take part only through the runner. Open Pstack itself runs inside Claude Code, Codex or Grok. In T3 Code, the app T3 runs loads the skills and the model sheet, and T3 starts each lane whose provider it offers.
 
 ## Learn from the original
 
@@ -175,19 +177,17 @@ This repository also keeps:
 
 ## Staying close to Lauren's pstack
 
-Open Pstack 1.16.0 tracks pstack 0.15.29 at Cursor commit [`88d47514b82e7c44f00f2b2a72ff6dd12158038c`](https://github.com/cursor/plugins/commit/88d47514b82e7c44f00f2b2a72ff6dd12158038c).
+Open Pstack 1.21.0 tracks pstack 0.15.36 at Cursor commit [`2776ddd2355d6d6c8747d3964600f28daf62f049`](https://github.com/cursor/plugins/commit/2776ddd2355d6d6c8747d3964600f28daf62f049).
 
 The two projects have separate version numbers. The pstack version identifies Lauren's upstream content. The Open Pstack version identifies the Claude Code and Codex package built from it.
 
-In this repository, “upstream” means Lauren's original pstack. Open Pstack does not promise instant updates. It records the exact version it follows, reviews new changes in order, and changes only what Claude Code and Codex require. New pstack behavior belongs in Lauren's project first whenever possible.
-
-Cursor's pstack now installs in Claude Code as `pstack@cursor-plugins`, with Claude models only and no Codex. Install only one of the two, because both use the `pstack:` prefix.
+In this repository, “upstream” means Lauren's original pstack. Open Pstack does not promise instant updates. It records the exact version it follows and each upstream change it leaves out in [UPSTREAM.md](UPSTREAM.md), reviews new changes in order, and describes its adaptations in [CHANGES.md](CHANGES.md). New pstack behavior belongs in Lauren's project first whenever possible.
 
 ## Contributing
 
 Fixes for Claude Code or Codex and help bringing over new pstack releases are welcome. Search [GitHub Issues](https://github.com/ericlitman/open-pstack/issues) before opening a new issue. For larger behavior changes, explain why the change belongs in Open Pstack instead of Lauren's original project.
 
-Read [UPSTREAM.md](UPSTREAM.md) before changing content brought over from Lauren's pstack. Pull requests must keep one shared skill tree for Claude Code and Codex and pass the repository's tests, type checks, plugin validation, and static checks.
+Read [UPSTREAM.md](UPSTREAM.md) before changing content brought over from Lauren's pstack. Pull requests must keep one shared skill tree for Claude Code, Codex, Grok and T3 Code and pass the repository's tests, type checks, plugin validation, and static checks.
 
 ## License
 

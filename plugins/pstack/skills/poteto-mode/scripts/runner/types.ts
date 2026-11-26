@@ -2,6 +2,7 @@ export const PARENTS = {
   claude: {
     harness: "Claude Code",
     native: "Agent",
+    explicitLaneRoute: "native",
     identity: [
       "CLAUDECODE",
       "CLAUDE_CODE_CHILD_SESSION",
@@ -12,6 +13,7 @@ export const PARENTS = {
   codex: {
     harness: "Codex",
     native: "spawn_agent",
+    explicitLaneRoute: "native",
     identity: [
       "CODEX_THREAD_ID",
       "CODEX_SESSION_ID",
@@ -21,6 +23,12 @@ export const PARENTS = {
       "CODEX_SANDBOX_NETWORK_DISABLED",
       "CODEX_INTERNAL_ORIGINATOR_OVERRIDE",
     ],
+  },
+  grok: {
+    harness: "Grok",
+    native: "spawn_subagent",
+    explicitLaneRoute: "runner",
+    identity: ["GROK_SESSION_ID", "GROK_AGENT"],
   },
 } as const;
 export const EFFORTS = ["low", "medium", "high", "xhigh", "max", "ultra", "default"] as const;
@@ -105,6 +113,7 @@ export function modelFailureStatus(value: string): "unavailable-model" | "child-
       || /^Error: Unknown model: /m.test(value) // Devin CLI 3000.10.21
       || /^Cannot use this model: /m.test(value) // Cursor CLI 2026.10.14-0f9edde
       || /^dsh: INVALID_REQUEST: The supported API model names are .+, but you passed /m.test(value) // dsh 0.2.0-rc.2
+      || /model `[^`]+` does not exist or you lack access/.test(value) // Muse Code 1.4.14
     ? "unavailable-model"
     : "child-failed";
 }

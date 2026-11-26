@@ -25,6 +25,7 @@ This plugin is a port of upstream MIT-licensed work. All upstream copyright noti
 | `plugins/pstack/skills/` (0.15.18 to 0.15.20 changes: `ketchup` before-and-after visuals, prompt cuts in `how`, `why`, poteto-mode playbooks, and four principles, the `/poteto-mode` chat as the playbook runner, `create-verification-skill` usable readiness, plan-checker fences, `watch-pr` review-thread pagination, `worktree-audit.sh -b`), `plugins/pstack/agents/poteto-agent.md`, `README-UPSTREAM.md` | [cursor/plugins/pstack @ 1b6d44f](https://github.com/cursor/plugins/tree/1b6d44ff26d4e242f4e8f68c391e6d2f7ca16def/pstack) | (c) 2026 Lauren Tan | MIT | [LICENSE](LICENSE) |
 | `plugins/pstack/skills/` (0.15.21 to 0.15.25 changes: the `in-your-own-words` and `sharpen` skills, per-spawn effort in poteto-mode and the routed skills, one full swarm per PR in the autopilots and the multi-phase plan, the Graphite-free `orch` frontier, the `watch-pr` owner-approval gate, Origin PRs in `worktree-audit.sh`, `ketchup` visuals and length, restated principles, and prompt cuts), `plugins/pstack/agents/poteto-agent.md`, `README-UPSTREAM.md` | [cursor/plugins/pstack @ 99743e9](https://github.com/cursor/plugins/tree/99743e9c151c8537cbbf1f98bb38f34ef3368453/pstack) | (c) 2026 Lauren Tan | MIT | [LICENSE](LICENSE) |
 | `plugins/pstack/skills/` (0.15.26 to 0.15.29 changes: the `create-formal-verification-skill` and `maintain-formal-verification-skill` skills, setup's verification offers, `poteto-help` routing and recipes, the `sharpen` rewrite, `ketchup` waiting items, and the `typescript-best-practices` brand guard), `README-UPSTREAM.md` | [cursor/plugins/pstack @ 88d4751](https://github.com/cursor/plugins/tree/88d47514b82e7c44f00f2b2a72ff6dd12158038c/pstack) | (c) 2026 Lauren Tan | MIT | [LICENSE](LICENSE) |
+| `plugins/pstack/skills/` (0.15.30 to 0.15.36 changes: the `statechart` and `ketchup-video` skills, run-based `interrogate` adversaries, the agentic Orchestrate playbook, Autopilot-stack without the merge, the different-provider arena judge, reflect copies outside the plugin cache, goal restatement, explain the number before measuring, and `watch-pr`, `check-plan` and `worktree-audit.sh` fixes), `README-UPSTREAM.md` | [cursor/plugins/pstack @ 2776ddd](https://github.com/cursor/plugins/tree/2776ddd2355d6d6c8747d3964600f28daf62f049/pstack) | (c) 2026 Lauren Tan | MIT | [LICENSE](LICENSE) |
 
 ## What changed in the port
 
@@ -42,6 +43,7 @@ Summary of structural changes:
 - `plugins/pstack/agents/poteto-agent.md` keeps the upstream prompt and adds Claude Code `skills` frontmatter so the isolated subagent preloads `pstack:poteto-mode`.
 - Claude-native lanes are port-authored agent definitions. Fable, Opus and Sonnet select their rolling family alias, and the Opus 5.5 and Haiku 5.5 pins select their exact model, each with the requested effort, for every selectable Claude-native pair in the model catalog. `registry/render.ts` generates them from the runner registry.
 - A Codex build shares the same `skills/` tree. It adds `plugins/pstack/.codex-plugin/plugin.json`, a root `.agents/plugins/marketplace.json`, and `plugins/pstack/skills/poteto-mode/references/codex-tools.md` (the Claude-to-Codex tool, model, and built-in map), plus a one-line Platform note in the skills that name a Claude primitive. The skill content itself is unchanged. See [CHANGES.md](CHANGES.md#codex-port).
+- A Grok build shares the same `skills/` tree. It adds `plugins/pstack/.grok-plugin/plugin.json`, the generated `plugins/pstack/grok-agents/` copies of `poteto-agent` and `comment-sicko`, and Grok rows in `codex-tools.md`, `provider-dispatch.md` and `setup-pstack/SKILL.md` (#281, started from max-metaplanet's PR #282).
 
 ## Modifications
 
@@ -52,6 +54,7 @@ Files authored for this port (not derived from upstream):
 - `plugins/pstack/.claude-plugin/plugin.json`
 - `.claude-plugin/marketplace.json` (repo root)
 - `plugins/pstack/.codex-plugin/plugin.json`
+- `plugins/pstack/.grok-plugin/plugin.json`
 - `.agents/plugins/marketplace.json` (repo root)
 - `plugins/pstack/skills/poteto-mode/references/codex-tools.md`
 - `plugins/pstack/skills/poteto-mode/scripts/bootstrap.test.ts`
@@ -68,4 +71,4 @@ Files authored for this port (not derived from upstream):
 - `CHANGES.md`
 - `LICENSE-cursor-team-kit` (copied verbatim from upstream cursor-team-kit MIT)
 
-Adam's fork supplements Open Pstack 1.16.0 with Cursor pstack skill changes through `ae5650febf4320793844c12c4adaa937f417f8da` (0.15.36), including the statechart and ketchup-video skills, and retains the orch store CLI that 0.15.36 removed. The existing Cursor license applies.
+Adam's fork supplements Open Pstack 1.21.0 with selected Cursor pstack changes through `b7b93c36be9bcc36a74db438e0fd385d660bc559` (0.15.48): the `reframe` skill, the `sharpen` and reflect text, and the `statechart` Windows, SANY-error and parent-border fixes (`UPSTREAM.md`, "Selected changes after the sync point"). It retains the orch store CLI that 0.15.36 removed. The existing Cursor license applies.
