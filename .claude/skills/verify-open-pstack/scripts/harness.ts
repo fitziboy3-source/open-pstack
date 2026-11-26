@@ -19,7 +19,7 @@ export function unroutable(feature: string, harness: Harness, cases: Case[]): bo
   return feature === 'runner' || setupFeature(feature) || feature.startsWith('agent-preload:') ||
     cases.some(c => harness === 'codex' ? c.codexSandbox !== undefined : c.claudePermission !== undefined);
 }
-/** Only the Claude and Codex lanes run through the account router; Grok and T3 keep their own session drivers. */
+/** Only the Claude and Codex lanes run through the account router. A routed run refuses Grok and T3: their drivers, auth links and cleanup are not routed. */
 export const routedHarness = (harness: Harness): harness is Exclude<Harness, 't3' | 'grok'> => harness !== 't3' && harness !== 'grok';
 export function launch(harness: Exclude<Harness, 't3' | 'grok'>, workspace: string, options: { cwd: string; addDirs: string[]; codexSandbox?: 'danger-full-access'; claudePermission?: 'bypassPermissions' }): string[] {
   const addDirs = options.addDirs.flatMap(dir => ['--add-dir', dir]);
@@ -200,7 +200,8 @@ export class MacDriver implements Driver {
       features: requiredFeatures(receipt, installation.harness).sort((a, b) => Number(setupFeature(a)) - Number(setupFeature(b)))
         .map(feature => ({ feature, cases: recipe(feature, installation.harness, this.routes) })) }));
     if (this.routing) {
-      for (const { installation, features } of plans.filter(p => routedHarness(p.installation.harness))) {
+      for (const { installation, features } of plans) {
+        if (!routedHarness(installation.harness)) throw new Error(`unrouted-harness:${installation.harness}`);
         if (!this.routing.models[installation.harness]) throw new Error(`native-model-missing:${installation.harness}`);
         for (const { feature, cases } of features) {
           if (unroutable(feature, installation.harness, cases)) throw new Error(`unsupported-routed-recipe:${feature}`);
