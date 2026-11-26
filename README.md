@@ -137,6 +137,7 @@ That is the main workflow. The other skills are there when poteto-mode needs the
 | `poteto-help` | You want to know which skill, playbook, or principle fits a question. |
 | `in-your-own-words` | You want the agent to restate your goal and the problem before it starts. |
 | `sharpen` | You want a prompt rewritten deeper, not bigger, before you send it. It returns the rewritten prompt and does not do the task. |
+| `reframe` | You can't yet name what you are building. It teaches the expert words for it, checks every source it cites, and rewrites your description with them. |
 | `ketchup-video` | You want the `/ketchup` catch-up as a short subtitled video of slides, with the calls waiting on you as text under it. |
 | `statechart` | Someone who owns the behavior needs to see it as a chart checked by a TLA+ model, with the shortest path to each state that breaks a rule. |
 | `statechart-diagram` | A `/statechart` chart should become a hand-drawn plate in pen and coloured pencil that a client or a team will keep. It runs by itself after `/statechart` writes a chart. |

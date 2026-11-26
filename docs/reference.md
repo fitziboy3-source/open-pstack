@@ -60,7 +60,7 @@ The marketplace install is the normal user path. Direct links are only for testi
 │   ├── .claude-plugin/plugin.json    # Claude Code manifest
 │   ├── .codex-plugin/plugin.json     # Codex manifest (skills: ./skills/)
 │   ├── .grok-plugin/plugin.json      # Grok manifest (skills: ./skills/, agents: ./grok-agents/)
-│   ├── skills/                       # 66 skills shared by Claude Code and Codex
+│   ├── skills/                       # 67 skills shared by Claude Code and Codex
 │   │   ├── poteto-mode/references/{codex-tools,provider-dispatch}.md  # tool + provider routing
 │   │   └── poteto-mode/scripts/      # bun/bash/node tooling: watch-pr, orch, runner, resolve-codex-transcript, check-plan.mjs, worktree-audit.sh
 │   ├── hooks/                        # SessionStart auto-fire: injects the poteto-mode mandate (Claude Code only)
@@ -177,6 +177,7 @@ The table uses the short upstream names. Claude Code exposes each native skill w
 | `/poteto-help` | find the skill, playbook, or principle for a question about pstack (typed only) |
 | `/in-your-own-words` | play back your goal and the problem before work starts (typed only) |
 | `/sharpen` | rewrite a prompt deeper, not bigger, before you send it; returns the rewritten prompt and does not do the task (typed only) |
+| `/reframe` | learn the expert words for what you are building, with words borrowed from neighboring fields and every cited source checked, then get the description rewritten with them; for a vague description, first list the two or three problems it could be (typed only) |
 
 ## Subagents
 

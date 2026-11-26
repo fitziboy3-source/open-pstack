@@ -3,6 +3,20 @@
 Open Pstack lands on green: Mergify merges a ready PR to main once verify and exact-head live-gate pass and no review thread is unresolved, and a workflow resolves Unfret's own threads. A PR that touches `.github/` or the Mergify config also waits for Unfret, and workflow changes require operator queueing.
 This port applies the Cursor → Claude Code substitutions in skill bodies. Earlier drafts left them flagged; this revision resolves them. A later pass added a Codex build that shares the same skills; see [Codex port](#codex-port) below.
 
+## 1.21.0-adam.20261126 syncs to Open Pstack 1.21.0 and Cursor pstack 0.15.48's selected changes
+
+Adam's fork at `1.21.0-adam.20261126` merges released Open Pstack 1.21.0 into `adam/release` and adds selected skill changes from Cursor pstack 0.15.37 to 0.15.48 (`b7b93c3`). The fork's front-door gate (active), session-hook flag, cloud installer, `orch` store CLI, verifier additions and `/statechart-diagram` stay. See `FORK.md` for the patch table and `UPSTREAM.md` for each commit left out.
+
+**From the port.** Open Pstack 1.17.0 to 1.21.0: the port's own Cursor pstack 0.15.36 translation, which replaces the fork's 2026-11-01 layer; writers on Devin, DeepSeek Harness and Amp lanes and a Muse Code provider; T3 Code and Grok as parent harnesses, each with live-gate cases; GPT-6 Astra lanes; and `statechart`'s typecheck. Default roles and panels are unchanged.
+
+**New skill.** `/reframe` teaches the expert words for what you are building, borrows terms from neighboring fields, checks every source it cites, and rewrites your description with them. For a vague description it first lists the two or three problems it could be. It runs only when typed.
+
+**Changed skills.** `/sharpen`'s rewritten prompt asks the agent to prototype any choice an experiment can settle. `/statechart` runs on native Windows, reads TLC's `\r\n` line ends, reports SANY's line and column when it cannot read a spec, and enters a parent state through its border in Mermaid charts.
+
+**Held.** Cursor's 0.15.37 to 0.15.43 restructuring of `why`, `how`, `reflect`, `architect`, Orchestrate and the shorter playbooks, with its new model defaults and retired roles, is not applied; it waits on an owner decision. The Gemini panel seat changes map to no port line.
+
+**Fork resolutions.** `statechart/scripts/test/` leaves the fork, as the port's #262 rule says. The verifier keeps its routed launcher on Claude and Codex beside the port's Grok and T3 sessions, and keeps `orch` among its shipped tools.
+
 ## 1.21.0 adds Grok as a parent harness
 
 Open Pstack 1.21.0 keeps the Cursor pstack 0.15.36 sync. Default roles and panels are unchanged.

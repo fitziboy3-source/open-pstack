@@ -71,4 +71,4 @@ Files authored for this port (not derived from upstream):
 - `CHANGES.md`
 - `LICENSE-cursor-team-kit` (copied verbatim from upstream cursor-team-kit MIT)
 
-Adam's fork supplements Open Pstack 1.16.0 with Cursor pstack skill changes through `ae5650febf4320793844c12c4adaa937f417f8da` (0.15.36), including the statechart and ketchup-video skills, and retains the orch store CLI that 0.15.36 removed. The existing Cursor license applies.
+Adam's fork supplements Open Pstack 1.21.0 with selected Cursor pstack changes through `b7b93c36be9bcc36a74db438e0fd385d660bc559` (0.15.48): the `reframe` skill, the `sharpen` and reflect text, and the `statechart` Windows, SANY-error and parent-border fixes (`UPSTREAM.md`, "Selected changes after the sync point"). It retains the orch store CLI that 0.15.36 removed. The existing Cursor license applies.

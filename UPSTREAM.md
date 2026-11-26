@@ -10,9 +10,9 @@ open-pstack tracks [Cursor's pstack](https://github.com/cursor/plugins/tree/main
 | Path | `pstack/` |
 | Commit | `2776ddd2355d6d6c8747d3964600f28daf62f049` |
 | Upstream version | `0.15.36` |
-| open-pstack version | `1.21.0` |
+| open-pstack version | `1.21.0-adam.20261126` |
 
-The table above is the current Cursor sync point. Open Pstack 1.17.0 imported this 0.15.36 sync, and 1.18.0 to 1.21.0 keep it. `README-UPSTREAM.md` preserves the upstream pstack README verbatim. `CHANGES.md` and `NOTICE.md` describe the adaptations and provenance.
+The table above is the current Cursor sync point. Open Pstack 1.17.0 imported this 0.15.36 sync, and 1.18.0 to 1.21.0 keep it. Adam's fork (`FORK.md`) keeps it as its full sync point too and adds the selected changes up to 0.15.48 listed below; `scripts/upstream-audit.py` therefore still reports every later Cursor change, the selected ones as already matching. `README-UPSTREAM.md` preserves the upstream pstack README verbatim. `CHANGES.md` and `NOTICE.md` describe the adaptations and provenance.
 
 ## Upstream-only exclusions
 
@@ -45,11 +45,24 @@ The table above is the current Cursor sync point. Open Pstack 1.17.0 imported th
 - `c742dd6`'s Orchestrate takes these mappings: `Task` workers go through provider dispatch, cloud VMs become dedicated local worktrees, the Project tracker and Project store become `<config-home>/orchestrate/<project-slug>/notes.md`, PR and CI event subscriptions become `watch-pr` waits, and forking a worker becomes reusing its worktree. "Call no scripts" means no orchestration-store scripts; the provider launcher and `watch-pr` stay. Its retry on a different model after a tool error is not applied: that failure is a named dropout, and a worker is replaced only on affirmative failure evidence. `3c596e7`'s `orch` change is superseded by the deletion of `scripts/orch/`.
 - Upstream's 0.15.30 to 0.15.36 manifest bumps in `pstack/plugin.json` and `pstack/.cursor-plugin/plugin.json` from `eb4db2b`, `642289e`, `b1a1298`, `7c7bde7`, `164ced1`, `ab1f702` and `c742dd6`, and the guide edits in `eb4db2b`, `3c0fdb4`, `34b1b7c`, `ab1f702` and `c742dd6`, are not applied, as for the earlier bumps and guide edits above. So are the matching updates to upstream's generated `harness/pstack/claude-code/` tree.
 
-- From 0.15.30 to 0.15.36 (Adam's fork, 2026-11-01): the `pstack/plugin.json` and `pstack/.cursor-plugin/plugin.json` bumps in `eb4db2b`, `642289e`, `b1a1298`, `7c7bde7`, `164ced1`, `ab1f702` and `c742dd6`, and the guide edits in `ab1f702` and `c742dd6`, are not imported, as for the earlier bumps and the guide above.
-- `c742dd6`'s deletion of `scripts/orch/orch.ts`, `store.ts` and `orch.test.ts` is not applied. Adam's harness runs its chief-of-staff program against that store CLI, so the fork keeps the three files and their test, and the `scripts/package.json` test list keeps `orch`. The agentic Orchestrate playbook itself is taken, with the port's harness substitutions, and no longer names the CLI.
-- `ab1f702`'s collapse of Autopilot-stack to two steps, its Autopilot-full step 5 trunk-move rule, and its babysit step 4 sentence that lets an Autopilot-stack owner publish its own rebase are not applied, as for `ce649c0` above: the port keeps the landing procedure from 1.3.0, and in Autopilot-stack the root is the one topology writer. Its `Task`-slug fallback text in poteto-mode's Match the model paragraph is not applied, as for `12d587d` above: a rejected model stays a named dropout. Its multi-phase-plan step 4 pick rule is not applied; the port keeps the rule at the end of `playbooks/autopilot-stack.md`. Its new blocking rule in Autopilot-full step 4 and the matching multi-phase-plan verdict line are applied, with the port's one-writer sentence kept.
-- `ab1f702`'s rewrite of `interrogate` is applied without `disable-model-invocation: true`, as for `73f8be4` above, and with the port's dispatch contract and role pointer; its four reference files are deleted. Its arena cross-judge rule is applied in provider terms: the judge is never the parent's provider, and a pool with no other provider skips the judge. `7054003`'s reflect rule names `.claude/skills/` and `~/.claude/skills/` (Codex: `.agents/skills/`) in place of the Cursor folders.
-- `eb4db2b` to `164ced1` add the `statechart` skill and `3c0fdb4` the `ketchup-video` skill. Both are imported verbatim; neither names a Cursor primitive. `statechart/scripts/**` is mapped to the verifier's `tools` feature, which does not exercise it yet.
+- Adam's fork takes the port's own 0.15.30 to 0.15.36 translation above, which replaces the fork's 2026-11-01 layer. One fork decision remains: `c742dd6`'s deletion of `scripts/orch/orch.ts`, `store.ts` and `orch.test.ts` is not applied. Adam's harness runs its chief-of-staff program against that store CLI, so the fork keeps the three files and their test, the `scripts/package.json` test list keeps `orch`, and the verifier maps `scripts/orch/**` to `tools`. The Orchestrate playbook follows the port and names no orchestration-store script.
+
+## Selected changes after the sync point (Adam's fork, 2026-11-26)
+
+Cursor pstack 0.15.37 to 0.15.48 (`2776ddd` to `b7b93c36be9bcc36a74db438e0fd385d660bc559`) has seven commits that touch `pstack/`. The fork applies these parts with the port's rules (`scripts/upstream-audit.py` and `scripts/upstream-merge.py`):
+
+| Cursor commit | Applied |
+| --- | --- |
+| `2dd5c0c` (#1324), `9e278fe` (#1326) | The `reframe` skill, verbatim, with its `disable-model-invocation: true` line, so it runs only when typed. Its `poteto-help` row. `README.md` and `docs/reference.md` list it. |
+| `bf0c7cd` (#1236) | `sharpen`'s last line: prototype a choice an experiment can settle. The reflect synthesizer's drift example. `statechart`'s SANY error report from a plain-mode rerun, and its Mermaid backend's entry into a parent state through the border. |
+| `0b46ec3` (#1292) | `statechart` on native Windows: `kill.ts`, `janitor.ts`, `windowsHide`, `\r\n` line splitting in `dot.ts` and `run.ts`, and the `SKILL.md` line on running it on Windows. `run.ts` keeps the port's `exitClass` return type (#262). |
+
+Not applied, and why:
+
+- `bf0c7cd`'s and `2f87c85`'s restructuring is held for an owner decision. It cuts `why`, `how`, `reflect` and `architect` to single files with no subagents, panels or model routing; retires the `how explorer`, `how explainer`, `why investigators, synthesizer`, `reflect tooling, judgment, divergent, synthesizer`, `architect runners` and `hardest tasks` roles that Adam's model sheet assigns; deletes the Orchestrate playbook and `check-plan.mjs`; shortens the principle leaves, `unslop`, `technical-writing`, Opening a PR, Babysit and the multi-phase plan; adds `poteto-mode/worker.md`; and moves the defaults to Fable 5.2, Opus 5.5 `-fast` slugs and Gemini 4 Carbon, capped at `xhigh`, with setup's `# defaults` marker and budget ladder. The role retirements need port changes to the model registry, setup's validator and their tests, and the port's 1.21.1 backport (ericlitman/open-pstack#308) also leaves this rewrite out.
+- `e58dd04` (#1283) and `dd24b67` (#1284) move upstream's Gemini panel seat to `gemini-4-neon-high`, then `-xhigh`. The port's panels come from the model catalog's role defaults, with no Gemini seat, so these lines map to no port line. Adam's lanes do not use Gemini.
+- `test/drawn.ts` and the test changes in `bf0c7cd` and `0b46ec3` stay out with the rest of `statechart/scripts/test/` (#262).
+- The manifest bumps in `pstack/plugin.json` and `pstack/.cursor-plugin/plugin.json`, the guide edits, the generated `harness/pstack/claude-code/` tree, `pstack/docs/harness/claude-code.md` and the Benny automation skills are not imported, as for the earlier bumps and guide edits above. `make-bot-ui` stays out. `README-UPSTREAM.md` stays at the sync point's README.
 
 ## Local port-patch ledger
 
